@@ -5,24 +5,42 @@ import sys
 import time
 from pathlib import Path
 
+import castor
+from castor import chaves as mod_chaves
 from castor import manifesto as mod_manifesto
 from castor import segredos as mod_segredos
 from castor.manifesto import ErroDeManifesto
 
-AREAS = ("segredos", "servico", "rotina", "ronda", "atualizacao")
+AREAS = ("chave", "maquina", "segredos", "servico", "rotina", "ronda",
+         "atualizacao")
 
 
 def construir_analisador() -> argparse.ArgumentParser:
     analisador = argparse.ArgumentParser(
         prog="castor",
-        description="Toolkit de infra pessoal: segredos, serviço, rotina, ronda e atualização.",
+        description="Toolkit de infra pessoal: chave, máquina, segredos, "
+                    "serviço, rotina, ronda e atualização.",
     )
+    analisador.add_argument("--versao", action="store_true",
+                            help="imprime a versão do castor e sai")
     analisador.add_argument(
         "--manifesto",
         default=os.environ.get("CASTOR_MANIFESTO", "castor.json"),
         help="caminho do manifesto (default: $CASTOR_MANIFESTO ou ./castor.json)",
     )
-    areas = analisador.add_subparsers(dest="area", metavar="area", required=True)
+    areas = analisador.add_subparsers(dest="area", metavar="area")
+
+    chave = areas.add_parser("chave", help="área chave — o acesso às clientes")
+    verbos_chave = chave.add_subparsers(dest="verbo", metavar="verbo",
+                                        required=True)
+
+    criar_chave = verbos_chave.add_parser("criar", help="cria o par de chaves")
+    criar_chave.add_argument("--caminho", default=None)
+
+    usar_chave = verbos_chave.add_parser("usar", help="adota uma chave existente")
+    usar_chave.add_argument("caminho")
+
+    verbos_chave.add_parser("mostrar", help="imprime a chave pública")
 
     segredos = areas.add_parser("segredos", help="área segredos")
     verbos = segredos.add_subparsers(dest="verbo", metavar="verbo", required=True)
@@ -52,7 +70,7 @@ def construir_analisador() -> argparse.ArgumentParser:
     verbos_rotina.add_parser("listar", help="mostra as rotinas do castor no agendador")
 
     for nome in AREAS:
-        if nome not in ("segredos", "rotina"):
+        if nome not in ("chave", "segredos", "rotina"):
             areas.add_parser(nome, help=f"área {nome}")
     return analisador
 
@@ -139,14 +157,51 @@ def _despachar_segredos(opcoes) -> int:
     return 0
 
 
+def _caminho_da_chave(opcoes) -> Path:
+    declarado = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto)).caminho_da_chave()
+    return declarado or mod_chaves.caminho_padrao()
+
+
+def _anotar_chave(opcoes, privada: Path) -> None:
+    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto))
+    mod_manifesto.gravar(mod_manifesto.anotar(lido, "chave", str(privada)))
+
+
+def _despachar_chave(opcoes) -> int:
+    if opcoes.verbo == "criar":
+        caminho = (Path(opcoes.caminho).expanduser() if opcoes.caminho
+                   else mod_chaves.caminho_padrao())
+        privada = mod_chaves.criar(caminho)
+        _anotar_chave(opcoes, privada)
+        print(f"criada: {privada}")
+        print(mod_chaves.mostrar(privada))
+        return 0
+    if opcoes.verbo == "usar":
+        privada = mod_chaves.adotar(Path(opcoes.caminho))
+        _anotar_chave(opcoes, privada)
+        print(f"adotada: {privada}")
+        return 0
+    print(mod_chaves.mostrar(_caminho_da_chave(opcoes)))
+    return 0
+
+
 def principal(argumentos: list[str] | None = None) -> int:
-    opcoes = construir_analisador().parse_args(argumentos)
+    analisador = construir_analisador()
+    opcoes = analisador.parse_args(argumentos)
+    if opcoes.versao:
+        print(castor.__version__)
+        return 0
+    if opcoes.area is None:
+        analisador.print_help()
+        return 1
     try:
+        if opcoes.area == "chave":
+            return _despachar_chave(opcoes)
         if opcoes.area == "segredos":
             return _despachar_segredos(opcoes)
         if opcoes.area == "rotina":
             return _despachar_rotina(opcoes)
-    except ErroDeManifesto as erro:
+    except (ErroDeManifesto, mod_chaves.ErroDeChave) as erro:
         print(str(erro), file=sys.stderr)
         return 1
     print(f"área '{opcoes.area}' ainda não tem verbos nesta versão.", file=sys.stderr)
