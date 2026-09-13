@@ -155,3 +155,114 @@ def test_o_segredo_nao_aparece_na_saida(bancada, monkeypatch, capsys):
                "--maquina", "represa"])
     saida = capsys.readouterr()
     assert SENHA_SINTETICA not in saida.out + saida.err
+
+
+def parado():
+    return MaquinaDeMentira({"is-active": "inactive\n",
+                             "is-enabled": "disabled\n"})
+
+
+def test_remover_para_desabilita_e_tira_a_unit(bancada, monkeypatch):
+    maquina = parado()
+    monkeypatch.setattr(conexao, "executar", maquina)
+    assert principal(["--manifesto", str(bancada), "servico", "remover",
+                      "sentinela", "--maquina", "represa"]) == 0
+    ordem = " | ".join(maquina.comandos)
+    assert "disable --now" in ordem
+    assert "sentinela.service" in ordem
+    assert "daemon-reload" in ordem
+
+
+def test_remover_tira_tambem_o_segredo_do_servico(bancada, monkeypatch):
+    """Credencial esquecida depois de remover o serviço é sujeira perigosa."""
+    maquina = parado()
+    monkeypatch.setattr(conexao, "executar", maquina)
+    principal(["--manifesto", str(bancada), "servico", "remover", "sentinela",
+               "--maquina", "represa"])
+    assert any("sentinela.env" in c for c in maquina.comandos)
+
+
+def test_remover_diz_que_o_linger_ficou(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", parado())
+    principal(["--manifesto", str(bancada), "servico", "remover", "sentinela",
+               "--maquina", "represa"])
+    assert "linger" in capsys.readouterr().out
+
+
+def test_servico_que_nao_parou_devolve_nove(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar",
+                        MaquinaDeMentira({"is-active": "active\n"}))
+    assert principal(["--manifesto", str(bancada), "servico", "remover",
+                      "sentinela", "--maquina", "represa"]) == 9
+    assert "continua ativo" in capsys.readouterr().err
+
+
+def test_servico_que_continua_habilitado_devolve_nove(bancada, monkeypatch,
+                                                      capsys):
+    """Parar e não desabilitar deixa o serviço voltar no próximo boot."""
+    maquina = MaquinaDeMentira({"is-active": "inactive\n",
+                                "is-enabled": "enabled\n"})
+    monkeypatch.setattr(conexao, "executar", maquina)
+    assert principal(["--manifesto", str(bancada), "servico", "remover",
+                      "sentinela", "--maquina", "represa"]) == 9
+    assert "habilitado" in capsys.readouterr().err
+
+
+def test_estado_lista_por_servico_e_maquina(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", de_pe())
+    assert principal(["--manifesto", str(bancada), "servico", "estado"]) == 0
+    saida = capsys.readouterr().out
+    assert "sentinela" in saida and "represa" in saida and "active" in saida
+
+
+def test_estado_ignora_servico_que_nao_tem_comando(bancada, monkeypatch, capsys):
+    """'correio' é só segredo — não é serviço, e não aparece como se fosse."""
+    monkeypatch.setattr(conexao, "executar", de_pe())
+    principal(["--manifesto", str(bancada), "servico", "estado"])
+    assert "correio" not in capsys.readouterr().out
+
+
+def test_estado_com_servico_caido_devolve_nove(bancada, monkeypatch):
+    monkeypatch.setattr(conexao, "executar",
+                        MaquinaDeMentira({"is-active": "failed\n"}))
+    assert principal(["--manifesto", str(bancada), "servico", "estado"]) == 9
+
+
+def test_maquina_que_nao_e_linux_aparece_como_pulada(bancada, monkeypatch,
+                                                     capsys):
+    """Pular em silêncio faria o relatório parecer completo."""
+    dados = json.loads(bancada.read_text(encoding="utf-8"))
+    dados["servicos"]["sentinela"]["maquinas"] = ["praia"]
+    bancada.write_text(json.dumps(dados), encoding="utf-8")
+    monkeypatch.setattr(conexao, "executar", de_pe())
+    principal(["--manifesto", str(bancada), "servico", "estado"])
+    saida = capsys.readouterr().out
+    assert "pulada" in saida and "darwin" in saida
+
+
+def test_reiniciar_confere_que_voltou(bancada, monkeypatch, capsys):
+    """É por aqui que um segredo trocado chega ao processo que o consome."""
+    maquina = de_pe()
+    monkeypatch.setattr(conexao, "executar", maquina)
+    assert principal(["--manifesto", str(bancada), "servico", "reiniciar",
+                      "sentinela", "--maquina", "represa"]) == 0
+    ordem = " | ".join(maquina.comandos)
+    assert ordem.index("restart") < ordem.index("is-active")
+    assert "ativo" in capsys.readouterr().out
+
+
+def test_reiniciar_que_nao_voltou_devolve_nove(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar",
+                        MaquinaDeMentira({"is-active": "failed\n"}))
+    assert principal(["--manifesto", str(bancada), "servico", "reiniciar",
+                      "sentinela", "--maquina", "represa"]) == 9
+    assert "castor servico registro" in capsys.readouterr().err
+
+
+def test_registro_traz_as_linhas_pedidas(bancada, monkeypatch, capsys):
+    maquina = MaquinaDeMentira({"journalctl": "linha um\nlinha dois\n"})
+    monkeypatch.setattr(conexao, "executar", maquina)
+    assert principal(["--manifesto", str(bancada), "servico", "registro",
+                      "sentinela", "--maquina", "represa", "--linhas", "5"]) == 0
+    assert "linha dois" in capsys.readouterr().out
+    assert any("-n 5" in c for c in maquina.comandos)

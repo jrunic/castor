@@ -391,10 +391,108 @@ def _instalar_servico(opcoes) -> int:
     return 0
 
 
+def _remover_servico(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    _so_linux(lido, opcoes.maquina)
+    maquina = lido.maquina(opcoes.maquina)
+    destino_ssh = _destino_de(opcoes, opcoes.maquina)
+
+    _mandar(destino_ssh, f"disable --now {opcoes.servico}.service")
+    # Único comando destrutivo que o castor manda para a cliente, e ele apaga
+    # dois caminhos que o próprio castor escreveu, calculados do manifesto.
+    arquivo = mod_segredos.destino_de(lido, opcoes.servico, opcoes.maquina)
+    unit = mod_unidade.caminho(maquina.casa, opcoes.servico)
+    mod_conexao.executar(destino_ssh, f"rm -f {unit} {arquivo}")
+    _mandar(destino_ssh, "daemon-reload")
+
+    situacao = _perguntar(destino_ssh, f"is-active {opcoes.servico}.service")
+    if situacao == "active":
+        print(f"'{opcoes.servico}' continua ativo em {opcoes.maquina}.",
+              file=sys.stderr)
+        return CODIGO_DE_SERVICO
+    habilitado = _perguntar(destino_ssh, f"is-enabled {opcoes.servico}.service")
+    if habilitado == "enabled":
+        print(f"'{opcoes.servico}' parou mas continua habilitado em "
+              f"{opcoes.maquina} — voltaria no próximo boot.", file=sys.stderr)
+        return CODIGO_DE_SERVICO
+
+    print(f"'{opcoes.servico}' saiu de {opcoes.maquina}: unit e segredo "
+          f"removidos. O linger do usuário fica ligado, porque pode estar "
+          f"sustentando outro serviço.")
+    return 0
+
+
+def _servicos_com_comando(lido) -> list:
+    return [(nome, declarado)
+            for nome, declarado in sorted(lido.dados.get("servicos", {}).items())
+            if declarado.get("comando")]
+
+
+def _estado_dos_servicos(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    caidos = 0
+    for nome, declarado in _servicos_com_comando(lido):
+        alvos = declarado.get("maquinas") or [
+            m for m in lido.nomes() if not lido.maquina(m).e_principal]
+        for maquina in alvos:
+            if opcoes.maquina and maquina != opcoes.maquina:
+                continue
+            sistema = lido.maquina(maquina).sistema
+            if sistema != "linux":
+                # Pular em silêncio faria o relatório parecer completo.
+                print(f"{nome}\t{maquina}\tpulada\t{sistema}, e serviço é Linux")
+                continue
+            try:
+                destino_ssh = _destino_de(opcoes, maquina)
+                situacao = _perguntar(destino_ssh, f"is-active {nome}.service")
+                habilitado = _perguntar(destino_ssh, f"is-enabled {nome}.service")
+            except (mod_conexao.FalhaDeConexao, ErroDeManifesto) as erro:
+                print(f"{nome}\t{maquina}\tinalcançável\t{erro}")
+                caidos += 1
+                continue
+            print(f"{nome}\t{maquina}\t{situacao}\t{habilitado}")
+            if situacao != "active":
+                caidos += 1
+    return CODIGO_DE_SERVICO if caidos else 0
+
+
+def _reiniciar_servico(opcoes) -> int:
+    """É por aqui que um segredo trocado chega ao processo que o consome."""
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    _so_linux(lido, opcoes.maquina)
+    destino_ssh = _destino_de(opcoes, opcoes.maquina)
+    _mandar(destino_ssh, f"restart {opcoes.servico}.service")
+    situacao = _perguntar(destino_ssh, f"is-active {opcoes.servico}.service")
+    if situacao != "active":
+        print(f"'{opcoes.servico}' não voltou: está '{situacao}'. Veja "
+              f"'castor servico registro {opcoes.servico} --maquina "
+              f"{opcoes.maquina}'.", file=sys.stderr)
+        return CODIGO_DE_SERVICO
+    print(f"'{opcoes.servico}' reiniciado e ativo em {opcoes.maquina}.")
+    return 0
+
+
+def _registro_do_servico(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    _so_linux(lido, opcoes.maquina)
+    destino_ssh = _destino_de(opcoes, opcoes.maquina)
+    saida = mod_conexao.executar(
+        destino_ssh, mod_conexao.comando_de_registro(opcoes.servico,
+                                                     opcoes.linhas))
+    print(saida.texto, end="")
+    return 0
+
+
 def _despachar_servico(opcoes) -> int:
     if opcoes.verbo == "instalar":
         return _instalar_servico(opcoes)
-    return 1
+    if opcoes.verbo == "remover":
+        return _remover_servico(opcoes)
+    if opcoes.verbo == "reiniciar":
+        return _reiniciar_servico(opcoes)
+    if opcoes.verbo == "registro":
+        return _registro_do_servico(opcoes)
+    return _estado_dos_servicos(opcoes)
 
 
 def _despachar_segredos(opcoes) -> int:
