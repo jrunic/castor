@@ -136,8 +136,13 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Estado atual
 
-Repositório criado em 2026-09-13. Primeira fatia especificada e aprovada;
-implementação ainda não começou.
+Em construção. A fundação, a área `rotina` e o empacotamento estão de pé, com
+suíte verde.
+
+**A área `segredos` está em modelo antigo.** O código resolve um *modelo* com
+marca própria; a decisão em vigor é *cofre* filtrado por serviço, com `$HOME` e
+`$HOME_PRINCIPAL`. A conversão está planejada. Quem for mexer em `segredos`
+converte antes de acrescentar — não estende o modelo antigo.
 
 ## Referências
 
