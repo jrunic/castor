@@ -11,6 +11,15 @@ tags: [changelog]
 
 # Histórico de versões
 
+## Não publicado
+
+- **`maquina preparar` instala o tailscale na cliente.** Na 0.1.0 ele só tentava
+  subir a rede numa máquina onde o tailscale podia não existir — e o passo não
+  conferia nada, então a falha passava em silêncio e só aparecia depois, como
+  "o nó não aparece na rede". Agora instala, espera no máximo 20 segundos pelo
+  endereço de login, e confere.
+- **Re-rodar o `preparar` não duplica a chave** no `authorized_keys`.
+
 ## 0.1.0 — 13/09/2026
 
 Primeira versão publicada.
