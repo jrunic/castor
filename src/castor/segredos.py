@@ -1,11 +1,17 @@
+"""O que cada serviço de cada máquina recebe do cofre.
+
+'montar' devolve TEXTO, não escreve arquivo. É o que permite o mesmo conteúdo
+ser gravado aqui, enviado para a cliente, ou apenas somado para comparação — sem
+que o segredo precise passar por disco no caminho.
+"""
 import hashlib
 from pathlib import Path
 
-from castor.expansao import expandir
-from castor.manifesto import ErroDeManifesto, Maquina
+from castor import cofre as mod_cofre
+from castor.manifesto import ErroDeManifesto, Manifesto
 
 
-class ModeloInvalido(ErroDeManifesto):
+class ServicoDesconhecido(ErroDeManifesto):
     pass
 
 
@@ -13,32 +19,44 @@ class VariavelAusente(ErroDeManifesto):
     pass
 
 
-def gerar(modelo: Path, maquina: Maquina, destino: Path) -> Path:
-    """Resolve o modelo para a máquina e grava o arquivo de serviço.
+def _declarado(manifesto: Manifesto, servico: str) -> dict:
+    declarado = manifesto.dados.get("servicos", {}).get(servico)
+    if declarado is None:
+        raise ServicoDesconhecido(
+            f"serviço '{servico}' não está declarado em 'servicos' de "
+            f"{manifesto.origem}. Declare as chaves que ele recebe e o destino."
+        )
+    return declarado
 
-    Grava em arquivo, nunca na saída padrão: o conteúdo é segredo.
-    """
-    resolvido = []
-    for numero, linha in enumerate(Path(modelo).read_text(encoding="utf-8").splitlines(), 1):
-        if not linha.strip() or linha.lstrip().startswith("#"):
-            continue
-        if "=" not in linha:
-            raise ModeloInvalido(f"{modelo}:{numero}: linha sem atribuição: {linha!r}")
-        linha_resolvida = expandir(linha, maquina)
-        chave, valor = linha_resolvida.split("=", 1)
-        # O arquivo é lido por dois consumidores com regras diferentes de
-        # expansão. Valor que os faria divergir é recusado na origem.
-        if "$" in valor or "`" in valor:
-            raise ModeloInvalido(
-                f"{modelo}:{numero}: valor de {chave} tem cifrão ou crase, que o shell "
-                f"expande e o systemd lê literal. Os dois consumidores divergiriam."
-            )
-        resolvido.append(linha_resolvida)
 
-    destino = Path(destino)
-    destino.write_text("\n".join(resolvido) + "\n", encoding="utf-8")
-    destino.chmod(0o600)
-    return destino
+def _casas(manifesto: Manifesto, maquina: str) -> tuple[str, str]:
+    return manifesto.maquina(maquina).casa, manifesto.principal().casa
+
+
+def montar(manifesto: Manifesto, servico: str, maquina: str,
+           valores: dict[str, str]) -> str:
+    """O conteúdo do arquivo daquele serviço, naquela máquina."""
+    declarado = _declarado(manifesto, servico)
+    casa, casa_principal = _casas(manifesto, maquina)
+    escolhidos = mod_cofre.filtrar(valores, declarado["chaves"],
+                                   origem=manifesto.dados.get("cofre", "o cofre"))
+    linhas = []
+    for chave, valor in escolhidos.items():
+        resolvido = mod_cofre.resolver(valor, casa=casa,
+                                       casa_principal=casa_principal)
+        linhas.append(f'{chave}="{resolvido}"')
+    return "\n".join(linhas) + "\n"
+
+
+def destino_de(manifesto: Manifesto, servico: str, maquina: str) -> str:
+    declarado = _declarado(manifesto, servico)
+    casa, casa_principal = _casas(manifesto, maquina)
+    return mod_cofre.resolver(declarado["destino"], casa=casa,
+                              casa_principal=casa_principal)
+
+
+def soma(conteudo: str) -> str:
+    return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
 
 
 def _ler_atribuicoes(arquivo: Path) -> dict[str, str]:
@@ -59,5 +77,5 @@ def ver(arquivo: Path, variavel: str, revelar: bool = False) -> str:
     valor = valores[variavel]
     if revelar:
         return valor
-    soma = hashlib.sha256(valor.encode("utf-8")).hexdigest()[:12]
-    return f"{variavel}: {len(valor)} caracteres, sha256:{soma}"
+    resumo = hashlib.sha256(valor.encode("utf-8")).hexdigest()[:12]
+    return f"{variavel}: {len(valor)} caracteres, sha256:{resumo}"
