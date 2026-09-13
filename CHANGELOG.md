@@ -13,6 +13,20 @@ tags: [changelog]
 
 ## Não publicado
 
+- **A área `atualizacao`**: `rodar` e `estado`. Quatro tipos de alvo —
+  `castor`, `pipx`, `npm` e `comando` — declarados no manifesto e atualizados a
+  partir da principal. Cada um confere **que o comando ainda responde** depois:
+  o gerenciador de pacotes sair zero não prova que o programa roda. Versão igual
+  é "sem mudança", que não é falha. Código de saída **11**.
+- **O castor é o último alvo, e o da principal por último de tudo** — um castor
+  novo quebrado não derruba a rodada que já estava andando. A principal se
+  atualiza **localmente**, sem ssh.
+- **Alvo com `reiniciar`** chama o `servico reiniciar` quando a versão muda:
+  atualizar o pacote e deixar o serviço rodando o binário velho é meio trabalho.
+- **Esta versão não tem** idade mínima, confiança, aprovação nem rollback, e a
+  referência diz isso em voz alta — material que cala sobre governança deixa
+  quem lê supor que ela existe.
+
 - **A área `ronda`**: `rodar` e `estado`. Você declara as checagens no
   manifesto — de comando, de serviço, ou de expiração de chave de nó — e a ronda
   **roda na máquina principal**, distribuindo as próprias perguntas. Não há

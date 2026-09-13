@@ -62,6 +62,7 @@ Nenhum acumula dois sentidos. É por eles que um agente distingue o que fazer.
 | 8 | algo ausente ou desatualizado | ver [`segredos-e-cofre.md`](segredos-e-cofre.md) |
 | 9 | o serviço não ficou ativo ou não parou | ver [`servico.md`](servico.md) |
 | 10 | alguma checagem da ronda falhou | ver [`ronda.md`](ronda.md) |
+| 11 | algum alvo não atualizou | ver [`atualizacao.md`](atualizacao.md) |
 
 ## O manifesto
 

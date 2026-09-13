@@ -50,6 +50,7 @@ castor/
 | `preparar.py` | Roteiro de passos com efeito conferido e prova exigida |
 | `unidade.py` | O texto da unit systemd de um serviço, e o que ela recusa |
 | `ronda.py` | As checagens declaradas, o que cada uma conclui, e a comparação com a ronda anterior |
+| `atualizacao.py` | O comando de cada tipo de alvo, e o que conta como atualizado |
 | `cofre.py` | Ler o cofre, recusar permissão frouxa, filtrar por serviço, resolver as duas marcas |
 | `segredos.py` | Montar o conteúdo de um serviço, somar, e descrever sem revelar |
 | `cliente.py` | Montar o manifesto-da-cliente a partir do da principal |
@@ -98,5 +99,5 @@ o resto roda com código real.
 
 ## Estado atual
 
-Áreas `chave`, `maquina`, `segredos`, `servico`, `rotina` e `ronda` de pé, com o
-instalador de bootstrap. `atualizacao` ainda sem verbos.
+**As sete áreas de pé**, com o instalador de bootstrap: `chave`, `maquina`,
+`segredos`, `servico`, `rotina`, `ronda` e `atualizacao`.

@@ -60,8 +60,10 @@ O passo a passo está em
 | `servico` | `instalar`, `remover`, `estado`, `reiniciar`, `registro` | Linux |
 | `rotina` | `rodar`, `agendar`, `listar` | Linux |
 | `ronda` | `rodar`, `estado` | roda na principal, em qualquer sistema |
+| `atualizacao` | `rodar`, `estado` | roda na principal, em qualquer sistema |
 
-`atualizacao` aparece em `castor --help` e ainda não tem verbos.
+**As sete áreas estão de pé**, e cada uma lista os próprios verbos em
+`castor <área> --help`.
 
 ## Três regras que o castor segue
 
