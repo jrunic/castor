@@ -94,3 +94,73 @@ def test_a_variavel_de_ambiente_continua_mandando(monkeypatch):
     monkeypatch.setenv("CASTOR_MANIFESTO", "/outro/lugar.json")
     opcoes = construir_analisador().parse_args(["maquina", "listar"])
     assert opcoes.manifesto == "/outro/lugar.json"
+
+
+from castor import conexao  # noqa: E402
+
+
+class EnvioDeMentira:
+    def __init__(self, codigo=0):
+        self.codigo = codigo
+        self.gravacoes = []
+
+    def __call__(self, destino, comando, **opcoes):
+        self.gravacoes.append((comando, opcoes.get("entrada")))
+        return conexao.Saida(codigo=self.codigo, texto="",
+                             erro="Permission denied" if self.codigo else "")
+
+
+def test_enviar_grava_o_arquivo_do_servico_na_cliente(bancada, monkeypatch):
+    envio = EnvioDeMentira()
+    monkeypatch.setattr(conexao, "executar", envio)
+    assert principal(["--manifesto", str(bancada), "segredos", "enviar",
+                      "correio", "--maquina", "represa"]) == 0
+    comandos = [c for c, _ in envio.gravacoes]
+    assert any("/home/castor/.config/castor/correio.env" in c for c in comandos)
+    assert any(e and SENHA_SINTETICA in e for _, e in envio.gravacoes)
+
+
+def test_enviar_leva_junto_o_manifesto_da_cliente(bancada, monkeypatch):
+    envio = EnvioDeMentira()
+    monkeypatch.setattr(conexao, "executar", envio)
+    principal(["--manifesto", str(bancada), "segredos", "enviar", "correio",
+               "--maquina", "represa"])
+    comandos = [c for c, _ in envio.gravacoes]
+    assert any("/home/castor/.config/castor/castor.json" in c for c in comandos)
+
+
+def test_o_cofre_nunca_atravessa(bancada, monkeypatch):
+    envio = EnvioDeMentira()
+    monkeypatch.setattr(conexao, "executar", envio)
+    principal(["--manifesto", str(bancada), "segredos", "enviar", "correio",
+               "--maquina", "represa"])
+    for comando, entrada in envio.gravacoes:
+        assert "cofre" not in comando
+        if entrada and entrada.lstrip().startswith("{"):
+            assert "cofre" not in entrada
+
+
+def test_enviar_para_a_principal_e_recusado(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", EnvioDeMentira())
+    assert principal(["--manifesto", str(bancada), "segredos", "enviar",
+                      "correio", "--maquina", "bancada"]) == 1
+    assert "principal" in capsys.readouterr().err
+
+
+def test_segredo_nao_aparece_na_saida_do_enviar(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", EnvioDeMentira())
+    principal(["--manifesto", str(bancada), "segredos", "enviar", "correio",
+               "--maquina", "represa"])
+    saida = capsys.readouterr()
+    assert SENHA_SINTETICA not in saida.out + saida.err
+
+
+def test_gravacao_que_falha_devolve_codigo_e_nomeia_o_arquivo(bancada,
+                                                              monkeypatch,
+                                                              capsys):
+    monkeypatch.setattr(conexao, "executar", EnvioDeMentira(codigo=1))
+    assert principal(["--manifesto", str(bancada), "segredos", "enviar",
+                      "correio", "--maquina", "represa"]) == 5
+    erro = capsys.readouterr().err
+    assert "correio.env" in erro
+    assert SENHA_SINTETICA not in erro

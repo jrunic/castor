@@ -10,6 +10,7 @@ from pathlib import Path
 
 import castor
 from castor import chaves as mod_chaves
+from castor import cliente as mod_cliente
 from castor import cofre as mod_cofre
 from castor import conexao as mod_conexao
 from castor import medicao as mod_medicao
@@ -98,6 +99,11 @@ def construir_analisador() -> argparse.ArgumentParser:
     gerar.add_argument("--destino", default=None,
                        help="arquivo a gravar; sem ele o comando recusa, "
                             "porque o conteúdo é segredo")
+
+    enviar = verbos.add_parser("enviar",
+                               help="entrega o arquivo do serviço à cliente")
+    enviar.add_argument("servico")
+    enviar.add_argument("--maquina", required=True)
 
     ver = verbos.add_parser("ver", help="descreve a variável sem imprimir o valor")
     ver.add_argument("arquivo")
@@ -206,7 +212,45 @@ def _cofre_de(lido) -> dict:
     return mod_cofre.ler(Path(declarado))
 
 
+def _gravar_na_cliente(destino_ssh, caminho: str, conteudo: str) -> None:
+    """Erro nomeia o arquivo, nunca o conteúdo."""
+    saida = mod_conexao.conferir(
+        mod_conexao.executar(destino_ssh, mod_conexao.gravar_arquivo(caminho),
+                             entrada=conteudo), destino_ssh)
+    if saida.codigo != 0:
+        raise mod_conexao.FalhaDeConexao(
+            f"não consegui gravar {caminho} na máquina: {saida.erro.strip()}")
+
+
+def _entregar(lido, servico: str, maquina: str, destino_ssh) -> str:
+    """As duas gravações que toda entrega faz. Devolve o arquivo do serviço.
+
+    Extraída porque o `preparar` entrega o aviso pelo mesmo caminho — e caminho
+    de entrega duplicado é onde um dos dois deixa de mandar o manifesto.
+    """
+    conteudo = mod_segredos.montar(lido, servico, maquina, _cofre_de(lido))
+    arquivo = mod_segredos.destino_de(lido, servico, maquina)
+    _gravar_na_cliente(destino_ssh, arquivo, conteudo)
+    _gravar_na_cliente(destino_ssh, mod_cliente.destino_na_cliente(lido, maquina),
+                       mod_cliente.como_texto(lido, maquina))
+    return arquivo
+
+
+def _enviar_servico(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    destino_ssh = _destino_de(opcoes, opcoes.maquina)
+    arquivo = _entregar(lido, opcoes.servico, opcoes.maquina, destino_ssh)
+    print(f"entregue em {opcoes.maquina}: {arquivo} e o manifesto da máquina")
+    return 0
+
+
 def _despachar_segredos(opcoes) -> int:
+    if opcoes.verbo == "enviar":
+        try:
+            return _enviar_servico(opcoes)
+        except mod_conexao.FalhaDeConexao as erro:
+            print(str(erro), file=sys.stderr)
+            return CODIGOS.get(type(erro), 5)
     if opcoes.verbo == "gerar":
         if not opcoes.destino:
             print("falta --destino. O conteúdo é segredo e não vai para a "
