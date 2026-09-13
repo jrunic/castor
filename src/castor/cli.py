@@ -514,9 +514,31 @@ def _preparar_maquina(opcoes) -> int:
         casa=f"/home/{opcoes.usuario_de_servico}", sistema=medido.sistema,
         endereco=opcoes.endereco, python=medido.python, papel="cliente")
     mod_manifesto.gravar(mod_manifesto.acrescentar(lido, maquina, substituir=True))
+
+    # O roteiro monta os próprios destinos e não expõe nenhum; aqui a conexão é
+    # com o usuário de serviço, pela chave do castor, que o roteiro provou.
+    destino_ssh = mod_conexao.Destino(usuario=opcoes.usuario_de_servico,
+                                      endereco=opcoes.endereco,
+                                      chave=caminho_da_chave)
+    servico_de_aviso = (lido.dados.get("aviso") or {}).get("servico", "correio")
+    # Relê: o manifesto acabou de ser gravado com a máquina nova, e é dela que a
+    # resolução de $HOME precisa.
+    declarados = mod_manifesto.ler(Path(opcoes.manifesto))
+    if servico_de_aviso in declarados.dados.get("servicos", {}):
+        try:
+            _entregar(declarados, servico_de_aviso, opcoes.nome, destino_ssh)
+        except (mod_conexao.FalhaDeConexao, mod_cofre.ErroDeCofre) as erro:
+            print(f"a máquina ficou pronta, mas a entrega do aviso falhou: "
+                  f"{erro}", file=sys.stderr)
+            return 5
+        print(f"\n'{opcoes.nome}' está pronta, cadastrada e sabendo avisar por "
+              f"e-mail quando algo falhar.")
+        return 0
+
     print(f"\n'{opcoes.nome}' está pronta e cadastrada. Ela ainda não sabe "
-          f"avisar por e-mail quando algo falhar — isso vem com "
-          f"'castor segredos enviar'.")
+          f"avisar quando algo falhar: declare o serviço '{servico_de_aviso}' "
+          f"em 'servicos' do manifesto e rode 'castor segredos enviar "
+          f"{servico_de_aviso} --maquina {opcoes.nome}'.")
     return 0
 
 

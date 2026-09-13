@@ -296,3 +296,44 @@ def test_sem_chave_inicial_o_roteiro_nao_recebe_nenhuma(tmp_path, monkeypatch):
                       "represa", "--endereco", "represa.exemplo.test",
                       "--usuario-inicial", "ubuntu"]) == 0
     assert recebido["chave_inicial"] is None
+
+
+def test_preparar_entrega_o_aviso_quando_o_servico_existe(tmp_path, monkeypatch,
+                                                          capsys):
+    """Sem o arquivo de aviso, a rotina roda, falha, e ninguém fica sabendo."""
+    caminho = _com_chave(tmp_path)
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    cofre = tmp_path / "cofre"
+    cofre.write_text("SMTP_SENHA=abacaxi-de-mentira\n", encoding="utf-8")
+    cofre.chmod(0o600)
+    dados["cofre"] = str(cofre)
+    dados["maquinas"] = {"bancada": {"papel": "principal", "usuario": "ana",
+                                     "casa": str(tmp_path), "sistema": "linux"}}
+    dados["servicos"] = {"correio": {
+        "chaves": ["SMTP_SENHA"], "destino": "$HOME/.config/castor/correio.env"}}
+    caminho.write_text(json.dumps(dados), encoding="utf-8")
+
+    _preparo_de_mentira(monkeypatch)
+    entregues = []
+    monkeypatch.setattr("castor.cli._gravar_na_cliente",
+                        lambda destino, arquivo, conteudo:
+                        entregues.append(arquivo))
+
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    assert any("correio.env" in a for a in entregues)
+    assert any("castor.json" in a for a in entregues)
+    assert "não sabe avisar" not in capsys.readouterr().out
+
+
+def test_preparar_sem_servico_de_aviso_avisa_em_voz_alta(tmp_path, monkeypatch,
+                                                         capsys):
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch)
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    saida = capsys.readouterr().out
+    assert "não sabe avisar" in saida
+    assert "correio" in saida

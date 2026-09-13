@@ -260,8 +260,4 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
               exige=("provar_chave", "sudo", "instalar_castor"),
               pendente="o acesso do usuário inicial fica de pé na v1: fechá-lo "
                        "mexe na configuração do servidor de SSH e é fatia própria"),
-        Passo("aviso",
-              pendente="depende do 'castor segredos enviar' em modelo de cofre. "
-                       "Até lá, a máquina roda rotina mas não sabe avisar quando "
-                       "ela falha."),
     ]

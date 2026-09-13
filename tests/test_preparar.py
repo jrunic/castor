@@ -121,7 +121,7 @@ def test_roteiro_comeca_pelo_acesso_inicial_e_so_depois_mede():
     assert nomes[:5] == ["acesso_inicial", "identidade", "relogio", "python",
                          "usuario_de_servico"]
     for esperado in ("provar_chave", "sudo", "instalar_castor", "rede",
-                     "expiracao", "aviso"):
+                     "expiracao"):
         assert esperado in nomes
 
 
@@ -164,10 +164,13 @@ def test_encerrar_acesso_inicial_exige_a_prova_da_chave():
     assert "provar_chave" in roteiro["encerrar_acesso_inicial"].exige
 
 
-def test_passo_do_aviso_fica_pendente_ate_o_envio_de_segredos_existir():
-    roteiro = {p.nome: p for p in _roteiro(ConexaoDeMentira())}
-    assert roteiro["aviso"].pendente
-    assert "segredos enviar" in roteiro["aviso"].pendente
+def test_o_roteiro_nao_entrega_o_aviso_porque_ele_depende_do_cadastro():
+    """A entrega precisa da máquina no manifesto, e o cadastro vem depois.
+
+    Quem entrega é o comando, no fim do preparar — e o teste que prova a
+    entrega está em test_cli_maquina.
+    """
+    assert "aviso" not in [p.nome for p in _roteiro(ConexaoDeMentira())]
 
 
 def test_a_url_de_login_capturada_vai_para_o_contexto():
