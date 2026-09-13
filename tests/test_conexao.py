@@ -142,3 +142,39 @@ def test_versao_remota_usa_o_comando_com_PATH_corrigido():
     executar = executor_de(codigo=0, saida="0.1.0\n")
     conexao.versao_remota(DESTINO, executor=executar)
     assert "$HOME/.local/bin" in " ".join(executar.comando)
+
+
+def test_entrada_vai_pelo_stdin_do_ssh():
+    """O segredo não vira argumento: argumento aparece na lista de processos."""
+    executar = executor_de(codigo=0)
+    conexao.executar(DESTINO, "cat > x", entrada="SENHA=abacaxi\n",
+                     executor=executar)
+    assert executar.opcoes.get("input") == "SENHA=abacaxi\n"
+    assert "abacaxi" not in " ".join(executar.comando)
+
+
+def test_gravacao_e_atomica_e_com_mascara_restrita():
+    comando = conexao.gravar_arquivo("/home/castor/.config/castor/correio.env")
+    assert "umask 077" in comando
+    assert ".novo" in comando
+    assert "mv" in comando
+    assert "mkdir -p" in comando
+
+
+def test_o_comando_de_soma_funciona_nos_dois_sistemas():
+    comando = conexao.somar_arquivo("/caminho/x")
+    assert "sha256sum" in comando
+    assert "shasum" in comando
+
+
+def test_a_gravacao_roda_de_verdade_num_shell(tmp_path):
+    """O fragmento atravessa aspas; aqui o shell executa o que ele virou."""
+    import subprocess
+    alvo = tmp_path / "pasta" / "correio.env"
+    fragmento = conexao.gravar_arquivo(str(alvo))
+    concluido = subprocess.run(["sh", "-c", fragmento], input='A="b"\n',
+                               capture_output=True, text=True)
+    assert concluido.returncode == 0, concluido.stderr
+    assert alvo.read_text(encoding="utf-8") == 'A="b"\n'
+    assert alvo.stat().st_mode & 0o077 == 0
+    assert not list(alvo.parent.glob("*.novo"))

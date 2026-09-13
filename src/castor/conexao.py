@@ -71,7 +71,8 @@ def montar(destino: Destino, comando: str, *, com_senha: bool = False,
 
 
 def executar(destino: Destino, comando: str, *, com_senha: bool = False,
-             com_terminal: bool = False, executor=subprocess.run) -> Saida:
+             com_terminal: bool = False, entrada: str | None = None,
+             executor=subprocess.run) -> Saida:
     """Dois modos, e a diferença é de propósito.
 
     Em lote, a saída é capturada e interpretada. Com senha (primeiro acesso) ou
@@ -83,7 +84,10 @@ def executar(destino: Destino, comando: str, *, com_senha: bool = False,
         concluido = executor(montar(destino, comando, com_senha=com_senha,
                                     com_terminal=com_terminal))
         return Saida(codigo=concluido.returncode, texto="", erro="")
-    concluido = executor(montar(destino, comando), capture_output=True, text=True)
+    opcoes = {"capture_output": True, "text": True}
+    if entrada is not None:
+        opcoes["input"] = entrada
+    concluido = executor(montar(destino, comando), **opcoes)
     return Saida(codigo=concluido.returncode, texto=concluido.stdout,
                  erro=concluido.stderr)
 
@@ -137,3 +141,19 @@ def versao_remota(destino: Destino, *, executor=subprocess.run) -> str:
             f"o castor de {destino.endereco} respondeu com erro: {saida.erro.strip()}"
         )
     return saida.texto.strip()
+
+
+def gravar_arquivo(caminho: str) -> str:
+    """Grava o que vier pela entrada padrão, ao lado, e troca.
+
+    Sem arquivo temporário para alguém ler no meio do caminho, e sem conteúdo em
+    argumento — argumento aparece na lista de processos da máquina.
+    """
+    return (f'umask 077 && mkdir -p "$(dirname {caminho})" && '
+            f'cat > {caminho}.novo && mv {caminho}.novo {caminho}')
+
+
+def somar_arquivo(caminho: str) -> str:
+    """A soma do arquivo do outro lado, sem trazer o conteúdo para cá."""
+    return (f"sha256sum {caminho} 2>/dev/null || shasum -a 256 {caminho} "
+            f"2>/dev/null || true")
