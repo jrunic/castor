@@ -125,3 +125,20 @@ def test_castor_que_responde_com_erro_nao_vira_castor_ausente():
 def test_versao_remota_devolve_o_numero():
     executar = executor_de(codigo=0, saida="0.1.0\n")
     assert conexao.versao_remota(DESTINO, executor=executar) == "0.1.0"
+
+
+def test_o_comando_remoto_poe_o_diretorio_de_instalacao_no_PATH():
+    """ssh não-interativo não lê ~/.profile — ~/.local/bin fica fora do PATH.
+
+    Medido em 13/09/2026 numa VPS Ubuntu: sem isto, o castor instala com
+    sucesso e toda invocação remota devolve 127, como se ele não existisse.
+    """
+    comando = conexao.comando_remoto("--versao")
+    assert "$HOME/.local/bin" in comando
+    assert comando.endswith("castor --versao")
+
+
+def test_versao_remota_usa_o_comando_com_PATH_corrigido():
+    executar = executor_de(codigo=0, saida="0.1.0\n")
+    conexao.versao_remota(DESTINO, executor=executar)
+    assert "$HOME/.local/bin" in " ".join(executar.comando)

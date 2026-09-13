@@ -18,6 +18,9 @@ SINAIS_DE_REDE = ("could not resolve hostname", "no route to host",
                   "network is unreachable", "operation timed out")
 SINAIS_DE_CHAVE = ("permission denied", "too many authentication failures")
 
+# Onde o instalador de bootstrap põe o comando.
+CASA_DO_CASTOR = "$HOME/.local/bin"
+
 
 class FalhaDeConexao(Exception):
     """Base dos fracassos de conexão."""
@@ -111,8 +114,19 @@ def conferir(saida: Saida, destino: Destino) -> Saida:
     raise FalhaDeConexao(f"o ssh falhou com {destino.alvo}: {saida.erro.strip()}")
 
 
+def comando_remoto(argumentos: str) -> str:
+    """Invocação do castor do outro lado, com o PATH corrigido.
+
+    O ssh não-interativo não lê ~/.profile, e é de lá que ~/.local/bin entra no
+    PATH. Sem isto, o castor instala com sucesso e toda chamada remota devolve
+    127 — como se ele não existisse. Medido em VPS Ubuntu em 13/09/2026.
+    """
+    return f'PATH="{CASA_DO_CASTOR}:$PATH" castor {argumentos}'
+
+
 def versao_remota(destino: Destino, *, executor=subprocess.run) -> str:
-    saida = conferir(executar(destino, "castor --versao", executor=executor), destino)
+    saida = conferir(
+        executar(destino, comando_remoto("--versao"), executor=executor), destino)
     if saida.codigo == 127 or "not found" in saida.erro.lower():
         raise CastorAusente(
             f"o castor não está instalado em {destino.endereco}. "
