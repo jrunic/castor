@@ -86,3 +86,16 @@ def test_sonda_cabe_numa_linha_e_nao_usa_aspas_simples():
 def test_sonda_pergunta_todos_os_campos_que_o_interpretador_exige():
     for campo in medicao.CAMPOS:
         assert f"{campo}=" in medicao.SONDA
+
+
+def test_fuso_diferente_do_daqui_e_relatado_sem_barrar():
+    """Critério 3 pede fuso conferido — mas fuso diferente é normal, não erro."""
+    medido = medicao.interpretar(RESPOSTA)
+    nota = medicao.conferir_fuso(medido, fuso_daqui="-0300")
+    assert nota is not None
+    assert "-0400" in nota and "-0300" in nota
+
+
+def test_mesmo_fuso_nao_gera_nota():
+    medido = medicao.interpretar(RESPOSTA)
+    assert medicao.conferir_fuso(medido, fuso_daqui="-0400") is None

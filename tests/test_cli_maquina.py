@@ -164,3 +164,105 @@ def test_remover_tira_do_manifesto_e_avisa_o_que_fica_para_tras(manifesto, capsy
     assert "represa" not in json.loads(
         manifesto.read_text(encoding="utf-8"))["maquinas"]
     assert "não desfaz" in capsys.readouterr().out
+
+
+def _preparo_de_mentira(monkeypatch, *, url=None, expiracao=None,
+                        erro_do_roteiro=None):
+    """Troca as três fronteiras do preparar: roteiro, tailscale e o Enter."""
+    from castor import preparar as mod_preparar
+    from castor import cli as mod_cli
+
+    def executar_roteiro(passos, contexto, relatar=print):
+        if erro_do_roteiro is not None:
+            raise erro_do_roteiro
+        from castor import medicao as mod_medicao
+        contexto["medicao"] = mod_medicao.interpretar(RESPOSTA_DA_SONDA)
+        if url:
+            contexto["url_de_login"] = url
+        return ["acesso_inicial"]
+
+    monkeypatch.setattr(mod_preparar, "executar", executar_roteiro)
+    monkeypatch.setattr(mod_preparar, "montar_roteiro",
+                        lambda **k: [])
+    monkeypatch.setattr(mod_cli, "_binario_do_tailscale", lambda: "/bin/tailscale")
+    monkeypatch.setattr(mod_cli, "_status_da_rede",
+                        lambda binario: json.dumps({"Peer": {"a": {
+                            "HostName": "represa", "KeyExpiry": expiracao}}}))
+    monkeypatch.setattr("builtins.input", lambda *a: "")
+
+
+def _com_chave(tmp_path):
+    privada = tmp_path / "chave"
+    privada.write_text("PRIVADA\n", encoding="utf-8")
+    (tmp_path / "chave.pub").write_text("ssh-ed25519 AAAA... ana\n",
+                                        encoding="utf-8")
+    caminho = tmp_path / "castor.json"
+    caminho.write_text(json.dumps({"chave": str(privada), "maquinas": {}}),
+                       encoding="utf-8")
+    return caminho
+
+
+def test_preparar_sem_chave_declarada_manda_criar_a_chave(tmp_path, capsys):
+    caminho = tmp_path / "castor.json"
+    caminho.write_text('{"maquinas": {}}', encoding="utf-8")
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 1
+    assert "castor chave criar" in capsys.readouterr().err
+
+
+def test_preparar_cadastra_a_maquina_e_avisa_o_que_falta(tmp_path, capsys,
+                                                         monkeypatch):
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch, expiracao=None)
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    gravado = json.loads(caminho.read_text(encoding="utf-8"))["maquinas"]["represa"]
+    assert gravado["papel"] == "cliente"
+    assert gravado["usuario"] == "castor"
+    assert gravado["endereco"] == "represa.exemplo.test"
+    assert "segredos enviar" in capsys.readouterr().out
+
+
+def test_preparar_mostra_a_url_de_login_capturada(tmp_path, capsys, monkeypatch):
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch, url="https://login.tailscale.com/a/9z8y")
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    assert "9z8y" in capsys.readouterr().out
+
+
+def test_expiracao_ainda_ativa_nao_anuncia_sucesso_nem_cadastra(tmp_path, capsys,
+                                                                monkeypatch):
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch, expiracao="2026-12-16T13:48:07Z")
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 6
+    erro = capsys.readouterr().err
+    assert "2026-12-16" in erro
+    assert json.loads(caminho.read_text(encoding="utf-8"))["maquinas"] == {}
+
+
+def test_preparar_relata_o_fuso_da_maquina_quando_difere(tmp_path, capsys,
+                                                         monkeypatch):
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch)
+    monkeypatch.setattr("time.strftime", lambda formato: "+0000")
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    assert "-0400" in capsys.readouterr().out
+
+
+def test_roteiro_que_para_devolve_codigo_de_preparo(tmp_path, capsys, monkeypatch):
+    from castor.preparar import EfeitoNaoConfirmado
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch,
+                        erro_do_roteiro=EfeitoNaoConfirmado("o sudo não pegou"))
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 7
+    assert "o sudo não pegou" in capsys.readouterr().err

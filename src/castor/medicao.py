@@ -85,3 +85,16 @@ def conferir_python(medido: Medicao,
         return (f"o python da máquina é {medido.python}; o castor precisa de "
                 f"{minimo[0]}.{minimo[1]} ou mais novo.")
     return None
+
+
+def conferir_fuso(medido: Medicao, fuso_daqui: str) -> str | None:
+    """Fuso diferente não é defeito — é o que faz a leitura do registro enganar.
+
+    Duas máquinas com a mesma hora e fusos diferentes produzem registro que
+    parece desencontrado, e agendamento que roda noutra hora da que se leu. Por
+    isso isto é nota, e não recusa: só quem opera sabe se é o que queria.
+    """
+    if medido.fuso == fuso_daqui:
+        return None
+    return (f"a máquina está no fuso {medido.fuso} e esta está em {fuso_daqui}. "
+            f"Registro e agendamento dela usam a hora local dela.")

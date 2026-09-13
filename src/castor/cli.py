@@ -2,6 +2,7 @@ import argparse
 import getpass
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -11,6 +12,8 @@ import castor
 from castor import chaves as mod_chaves
 from castor import conexao as mod_conexao
 from castor import medicao as mod_medicao
+from castor import preparar as mod_preparar
+from castor import rede as mod_rede
 from castor import manifesto as mod_manifesto
 from castor import segredos as mod_segredos
 from castor.manifesto import ErroDeManifesto
@@ -64,6 +67,14 @@ def construir_analisador() -> argparse.ArgumentParser:
     remover = verbos_maquina.add_parser("remover",
                                         help="tira a máquina do manifesto")
     remover.add_argument("nome")
+
+    preparar_maquina = verbos_maquina.add_parser(
+        "preparar", help="leva uma máquina recém-instalada a máquina cliente")
+    preparar_maquina.add_argument("nome")
+    preparar_maquina.add_argument("--endereco", required=True)
+    preparar_maquina.add_argument("--usuario-inicial", required=True,
+                                  help="o usuário criado na instalação do sistema")
+    preparar_maquina.add_argument("--usuario-de-servico", default="castor")
 
     testar = verbos_maquina.add_parser("testar", help="prova a conexão com a cliente")
     testar.add_argument("nome")
@@ -287,7 +298,108 @@ def _adicionar_maquina(opcoes) -> int:
     return 0
 
 
+CAMINHOS_DO_TAILSCALE = ("/usr/local/bin/tailscale", "/opt/homebrew/bin/tailscale",
+                         "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
+
+
+def _binario_do_tailscale() -> str | None:
+    achado = shutil.which("tailscale")
+    if achado:
+        return achado
+    for caminho in CAMINHOS_DO_TAILSCALE:
+        if Path(caminho).exists():
+            return caminho
+    return None
+
+
+def _status_da_rede(binario: str) -> str:
+    return subprocess.run([binario, "status", "--json"],
+                          capture_output=True, text=True).stdout
+
+
+def _conduzir_expiracao(nome: str) -> int:
+    """O castor instrui e confere; desativar é do painel, por desenho do tailscale.
+
+    A conferência roda AQUI, na principal: um nó não enxerga a própria expiração
+    de chave — ela só aparece na entrada de peer que as outras máquinas veem.
+    """
+    tailscale = _binario_do_tailscale()
+    if tailscale is None:
+        print("não achei o comando 'tailscale' nesta máquina, então não tenho "
+              "como conferir a expiração da chave de nó dela.", file=sys.stderr)
+        return 6
+    print(f"\nFalta uma coisa que só se faz no painel: desativar a expiração da "
+          f"chave de nó de '{nome}'.\n"
+          f"  1. Abra https://login.tailscale.com/admin/machines\n"
+          f"  2. Ache a máquina '{nome}'\n"
+          f"  3. No menu dela, escolha 'Disable key expiry'\n")
+    input("Feito isso, aperte Enter para eu conferir. ")
+    try:
+        expiracao = mod_rede.expiracao_de(_status_da_rede(tailscale), nome)
+    except (mod_rede.ErroDeRede, ValueError) as erro:
+        print(str(erro), file=sys.stderr)
+        return 6
+    if expiracao is not None:
+        print(f"a expiração de '{nome}' continua ativa, vencendo em {expiracao}. "
+              f"Não vou anunciar sucesso: quando essa data chegar, a máquina sai "
+              f"da rede e o acesso vai embora junto.", file=sys.stderr)
+        return 6
+    print(f"conferido: a chave de nó de '{nome}' não expira mais.")
+    return 0
+
+
+def _preparar_maquina(opcoes) -> int:
+    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto))
+    caminho_da_chave = lido.caminho_da_chave()
+    if caminho_da_chave is None:
+        print("não há chave declarada no manifesto. Rode 'castor chave criar' "
+              "antes de preparar uma máquina.", file=sys.stderr)
+        return 1
+
+    contexto = {"chave": caminho_da_chave}
+    roteiro = mod_preparar.montar_roteiro(
+        nome=opcoes.nome, endereco=opcoes.endereco,
+        usuario_inicial=opcoes.usuario_inicial,
+        usuario_de_servico=opcoes.usuario_de_servico,
+        chave_publica=mod_chaves.mostrar(caminho_da_chave), contexto=contexto)
+    try:
+        mod_preparar.executar(roteiro, contexto)
+    except mod_conexao.FalhaDeConexao as erro:
+        print(str(erro), file=sys.stderr)
+        return CODIGOS.get(type(erro), 5)
+    except (mod_preparar.ErroDePreparo, mod_medicao.MedicaoIncompleta) as erro:
+        print(str(erro), file=sys.stderr)
+        return 7
+
+    if contexto.get("url_de_login"):
+        print(f"\nAbra este endereço no navegador desta máquina para ligar "
+              f"'{opcoes.nome}' à sua rede privada:\n\n  "
+              f"{contexto['url_de_login']}\n")
+        input("Depois de autorizar, aperte Enter. ")
+
+    codigo = _conduzir_expiracao(opcoes.nome)
+    if codigo != 0:
+        return codigo
+
+    medido = contexto["medicao"]
+    nota = mod_medicao.conferir_fuso(medido, fuso_daqui=time.strftime("%z"))
+    if nota:
+        print(f"[castor] {nota}")
+
+    maquina = mod_manifesto.Maquina(
+        nome=opcoes.nome, usuario=opcoes.usuario_de_servico,
+        casa=f"/home/{opcoes.usuario_de_servico}", sistema=medido.sistema,
+        endereco=opcoes.endereco, python=medido.python, papel="cliente")
+    mod_manifesto.gravar(mod_manifesto.acrescentar(lido, maquina, substituir=True))
+    print(f"\n'{opcoes.nome}' está pronta e cadastrada. Ela ainda não sabe "
+          f"avisar por e-mail quando algo falhar — isso vem com "
+          f"'castor segredos enviar'.")
+    return 0
+
+
 def _despachar_maquina(opcoes) -> int:
+    if opcoes.verbo == "preparar":
+        return _preparar_maquina(opcoes)
     if opcoes.verbo == "adicionar":
         return _adicionar_maquina(opcoes)
     if opcoes.verbo == "listar":
