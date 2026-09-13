@@ -18,6 +18,7 @@ from castor import preparar as mod_preparar
 from castor import rede as mod_rede
 from castor import manifesto as mod_manifesto
 from castor import segredos as mod_segredos
+from castor import unidade as mod_unidade
 from castor.manifesto import ErroDeManifesto
 
 AREAS = ("chave", "maquina", "segredos", "servico", "rotina", "ronda",
@@ -128,8 +129,31 @@ def construir_analisador() -> argparse.ArgumentParser:
 
     verbos_rotina.add_parser("listar", help="mostra as rotinas do castor no agendador")
 
+    servico = areas.add_parser("servico", help="área servico — o que roda na cliente")
+    verbos_servico = servico.add_subparsers(dest="verbo", metavar="verbo",
+                                            required=True)
+
+    for nome_do_verbo, ajuda in (
+        ("instalar", "entrega o segredo, grava a unit e deixa o serviço ativo"),
+        ("remover", "para, desabilita e tira a unit e o segredo"),
+        ("reiniciar", "reinicia e confere que voltou"),
+    ):
+        verbo = verbos_servico.add_parser(nome_do_verbo, help=ajuda)
+        verbo.add_argument("servico")
+        verbo.add_argument("--maquina", required=True)
+
+    estado_servico = verbos_servico.add_parser(
+        "estado", help="diz, por serviço e máquina, se está ativo e habilitado")
+    estado_servico.add_argument("--maquina", default=None)
+
+    registro = verbos_servico.add_parser("registro",
+                                         help="as últimas linhas do serviço")
+    registro.add_argument("servico")
+    registro.add_argument("--maquina", required=True)
+    registro.add_argument("--linhas", type=int, default=50)
+
     for nome in AREAS:
-        if nome not in ("chave", "maquina", "segredos", "rotina"):
+        if nome not in ("chave", "maquina", "segredos", "rotina", "servico"):
             areas.add_parser(nome, help=f"área {nome}")
     return analisador
 
@@ -286,6 +310,91 @@ def _estado_dos_segredos(opcoes) -> int:
                       f"esperado {esperada[:12]}, lá {obtida[:12]}")
                 pendencias += 1
     return 8 if pendencias else 0
+
+
+CODIGO_DE_SERVICO = 9
+
+
+class ServicoNaoObedeceu(Exception):
+    """Comando de serviço que devia mudar o mundo e voltou com erro."""
+
+
+def _so_linux(lido, maquina: str) -> None:
+    sistema = lido.maquina(maquina).sistema
+    if sistema != "linux":
+        raise ErroDeManifesto(
+            f"'{maquina}' é {sistema}, e serviço é Linux nesta versão. Quem "
+            f"roda serviço é a máquina cliente."
+        )
+
+
+def _mandar(destino_ssh, argumentos: str) -> None:
+    """Comando que MUDA alguma coisa. Erro aqui para o resto.
+
+    Sem isto, um daemon-reload que falha só apareceria lá na frente, no
+    is-active — longe da causa.
+    """
+    saida = mod_conexao.executar(destino_ssh,
+                                 mod_conexao.comando_de_servico(argumentos))
+    if saida.codigo != 0:
+        raise ServicoNaoObedeceu(
+            f"'systemctl --user {argumentos}' falhou: {saida.erro.strip()}")
+
+
+def _perguntar(destino_ssh, argumentos: str) -> str:
+    """Comando que PERGUNTA. Código diferente de zero é resposta, não erro:
+    'is-active' de serviço parado sai 3 com 'inactive' na saída padrão."""
+    return mod_conexao.executar(
+        destino_ssh, mod_conexao.comando_de_servico(argumentos)).texto.strip()
+
+
+def _instalar_servico(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    _so_linux(lido, opcoes.maquina)
+    maquina = lido.maquina(opcoes.maquina)
+    declarado = lido.dados.get("servicos", {}).get(opcoes.servico)
+    if declarado is None:
+        raise ErroDeManifesto(
+            f"serviço '{opcoes.servico}' não está em 'servicos' de {lido.origem}.")
+    texto = mod_unidade.montar(opcoes.servico, declarado, casa=maquina.casa,
+                               casa_principal=lido.principal().casa)
+    destino_ssh = _destino_de(opcoes, opcoes.maquina)
+
+    # 1. o segredo primeiro: sem EnvironmentFile o systemd recusa a unit, e o
+    #    erro apareceria longe da causa.
+    _entregar(lido, opcoes.servico, opcoes.maquina, destino_ssh)
+    # 2. a unit
+    _gravar_na_cliente(destino_ssh,
+                       mod_unidade.caminho(maquina.casa, opcoes.servico), texto)
+    # 3. o linger, que é o que faz o serviço sobreviver ao fim da sessão
+    mod_conexao.executar(destino_ssh,
+                         f"sudo loginctl enable-linger {maquina.usuario}")
+    if "Linger=yes" not in mod_conexao.executar(
+            destino_ssh, f"loginctl show-user {maquina.usuario}").texto:
+        print(f"o linger de '{maquina.usuario}' não ficou ligado. Sem ele o "
+              f"serviço morre quando a última sessão fechar — não vou dizer "
+              f"que instalei.", file=sys.stderr)
+        return CODIGO_DE_SERVICO
+    # 4. recarregar e ligar — os dois mudam o mundo, e falha aqui para tudo
+    _mandar(destino_ssh, "daemon-reload")
+    _mandar(destino_ssh, f"enable --now {opcoes.servico}.service")
+
+    situacao = _perguntar(destino_ssh, f"is-active {opcoes.servico}.service")
+    if situacao != "active":
+        print(f"o serviço '{opcoes.servico}' ficou '{situacao}' em "
+              f"{opcoes.maquina}. Veja o que ele disse: 'castor servico "
+              f"registro {opcoes.servico} --maquina {opcoes.maquina}'.",
+              file=sys.stderr)
+        return CODIGO_DE_SERVICO
+    print(f"'{opcoes.servico}' está ativo em {opcoes.maquina}, e continua "
+          f"depois que esta sessão fechar.")
+    return 0
+
+
+def _despachar_servico(opcoes) -> int:
+    if opcoes.verbo == "instalar":
+        return _instalar_servico(opcoes)
+    return 1
 
 
 def _despachar_segredos(opcoes) -> int:
@@ -586,6 +695,18 @@ def principal(argumentos: list[str] | None = None) -> int:
             return _despachar_chave(opcoes)
         if opcoes.area == "maquina":
             return _despachar_maquina(opcoes)
+        if opcoes.area == "servico":
+            try:
+                return _despachar_servico(opcoes)
+            except mod_conexao.FalhaDeConexao as erro:
+                print(str(erro), file=sys.stderr)
+                return CODIGOS.get(type(erro), 5)
+            except ServicoNaoObedeceu as erro:
+                print(str(erro), file=sys.stderr)
+                return CODIGO_DE_SERVICO
+            except mod_unidade.DeclaracaoInvalida as erro:
+                print(str(erro), file=sys.stderr)
+                return 1
         if opcoes.area == "segredos":
             return _despachar_segredos(opcoes)
         if opcoes.area == "rotina":
