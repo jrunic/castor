@@ -241,3 +241,30 @@ def test_checagem_de_comando_que_passa_e_que_falha_na_maquina_real():
     assert "passou" in linhas["disco-da-vps"], linhas["disco-da-vps"]
     assert "falhou" in linhas["sempre-falha"], linhas["sempre-falha"]
     print(f"\n{linhas['disco-da-vps']}\n{linhas['sempre-falha']}")
+
+
+@entrega
+def test_o_seco_da_atualizacao_mostra_o_que_faria():
+    seco = castor("atualizacao", "rodar", "--seco")
+    assert seco.returncode == 0, seco.stderr
+    print(f"\n{seco.stdout.strip()}")
+    assert "instalar.sh" in seco.stdout
+
+
+@entrega
+def test_o_estado_da_atualizacao_le_a_versao_real_da_vps():
+    estado = castor("atualizacao", "estado")
+    assert estado.returncode == 0, estado.stdout + estado.stderr
+    linha = next(l for l in estado.stdout.splitlines() if "castor" in l)
+    assert "0.1." in linha, linha
+    print(f"\n{linha}")
+
+
+@entrega
+def test_atualizar_o_castor_da_vps_de_verdade():
+    """A máquina já está na última; o resultado honesto é 'sem mudança'."""
+    feito = castor("atualizacao", "rodar")
+    assert feito.returncode == 0, feito.stdout + feito.stderr
+    linha = next(l for l in feito.stdout.splitlines() if "castor" in l)
+    assert "\tok\t" in linha, linha
+    print(f"\n{linha}")
