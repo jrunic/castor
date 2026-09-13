@@ -10,6 +10,7 @@ from pathlib import Path
 
 import castor
 from castor import chaves as mod_chaves
+from castor import cofre as mod_cofre
 from castor import conexao as mod_conexao
 from castor import medicao as mod_medicao
 from castor import preparar as mod_preparar
@@ -20,6 +21,8 @@ from castor.manifesto import ErroDeManifesto
 
 AREAS = ("chave", "maquina", "segredos", "servico", "rotina", "ronda",
          "atualizacao")
+
+MANIFESTO_PADRAO = "~/.config/castor/castor.json"
 
 
 def construir_analisador() -> argparse.ArgumentParser:
@@ -32,8 +35,10 @@ def construir_analisador() -> argparse.ArgumentParser:
                             help="imprime a versão do castor e sai")
     analisador.add_argument(
         "--manifesto",
-        default=os.environ.get("CASTOR_MANIFESTO", "castor.json"),
-        help="caminho do manifesto (default: $CASTOR_MANIFESTO ou ./castor.json)",
+        default=os.environ.get("CASTOR_MANIFESTO",
+                               str(Path(MANIFESTO_PADRAO).expanduser())),
+        help="caminho do manifesto (default: $CASTOR_MANIFESTO ou "
+             "~/.config/castor/castor.json)",
     )
     areas = analisador.add_subparsers(dest="area", metavar="area")
 
@@ -86,10 +91,13 @@ def construir_analisador() -> argparse.ArgumentParser:
     segredos = areas.add_parser("segredos", help="área segredos")
     verbos = segredos.add_subparsers(dest="verbo", metavar="verbo", required=True)
 
-    gerar = verbos.add_parser("gerar", help="resolve o modelo e grava o arquivo de serviço")
-    gerar.add_argument("modelo")
+    gerar = verbos.add_parser("gerar",
+                              help="filtra o cofre e grava o arquivo do serviço")
+    gerar.add_argument("servico")
     gerar.add_argument("--maquina", required=True)
-    gerar.add_argument("--destino", required=True)
+    gerar.add_argument("--destino", default=None,
+                       help="arquivo a gravar; sem ele o comando recusa, "
+                            "porque o conteúdo é segredo")
 
     ver = verbos.add_parser("ver", help="descreve a variável sem imprimir o valor")
     ver.add_argument("arquivo")
@@ -188,10 +196,30 @@ def _despachar_rotina(opcoes) -> int:
     return resultado.codigo
 
 
+def _cofre_de(lido) -> dict:
+    declarado = lido.dados.get("cofre")
+    if declarado is None:
+        raise mod_cofre.CofreAusente(
+            f"o manifesto {lido.origem} não declara onde fica o cofre. "
+            f"Acrescente a chave 'cofre' com o caminho do arquivo."
+        )
+    return mod_cofre.ler(Path(declarado))
+
+
 def _despachar_segredos(opcoes) -> int:
     if opcoes.verbo == "gerar":
-        maquina = mod_manifesto.ler(Path(opcoes.manifesto)).maquina(opcoes.maquina)
-        destino = mod_segredos.gerar(Path(opcoes.modelo), maquina, Path(opcoes.destino))
+        if not opcoes.destino:
+            print("falta --destino. O conteúdo é segredo e não vai para a "
+                  "saída padrão.", file=sys.stderr)
+            return 1
+        lido = mod_manifesto.ler(Path(opcoes.manifesto))
+        conteudo = mod_segredos.montar(lido, opcoes.servico, opcoes.maquina,
+                                       _cofre_de(lido))
+        destino = Path(opcoes.destino)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.touch(mode=0o600, exist_ok=True)
+        destino.chmod(0o600)
+        destino.write_text(conteudo, encoding="utf-8")
         print(f"gravado: {destino}")
         return 0
     print(mod_segredos.ver(Path(opcoes.arquivo), opcoes.variavel, revelar=opcoes.revelar))
@@ -450,7 +478,8 @@ def principal(argumentos: list[str] | None = None) -> int:
             return _despachar_segredos(opcoes)
         if opcoes.area == "rotina":
             return _despachar_rotina(opcoes)
-    except (ErroDeManifesto, mod_chaves.ErroDeChave) as erro:
+    except (ErroDeManifesto, mod_chaves.ErroDeChave,
+            mod_cofre.ErroDeCofre) as erro:
         print(str(erro), file=sys.stderr)
         return 1
     print(f"área '{opcoes.area}' ainda não tem verbos nesta versão.", file=sys.stderr)
