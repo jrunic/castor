@@ -19,44 +19,81 @@ tags: [arquitetura, Python]
 
 ## Visão geral
 
-[Descrição de uma frase do tipo de arquitetura: monólito? CLI? lib? web app? Quem fala com quem.]
+CLI em Python de um comando só, `castor`, com áreas de subcomandos. Roda na
+**máquina principal** e comanda **máquinas clientes** por SSH; nas clientes,
+roda também localmente (rotina, ronda). Stdlib apenas, sem código nativo,
+distribuída como arquivo único.
 
 ```
 castor/
 ├── README.md         — entrypoint humano
-├── CONTEXTO.md       — padrões técnicos + restrições (carga default; raiz — jd-agente lê aqui)
-├── GLOSSARIO.md      — linguagem do domínio (quando existir)
-├── roadmap.md        — incrementos (quando existir)
+├── CONTEXTO.md       — padrões técnicos + restrições (carga default; raiz)
 ├── 91-diario/        — diários de sessão
-├── docs/
-│   └── 81-referencia/ — arquitetura.md (mapa fino), decisoes/, dominio/ + quadrantes Diátaxis (explicacoes/visao-geral.md = o quê/porquê)
-└── [src/, tests/, migrations/, scripts/, ...]
+├── scripts/
+│   ├── build-pyz.py  — empacota src/ em castor.pyz
+│   └── instalar.sh   — instalador de bootstrap (o único shell do produto)
+├── src/castor/       — o pacote
+├── tests/            — pytest
+└── docs/81-referencia/ — arquitetura.md (este), decisoes/, dominio/ + quadrantes Diátaxis
 ```
 
 ## Módulos principais
 
-[Tabela de módulos/pastas/arquivos críticos com responsabilidade de cada um. Atualize quando criar/mover/renomear.]
-
 | Módulo | Responsabilidade |
 |---|---|
-| [exemplo] | [exemplo] |
+| `cli.py` | Analisa a linha de comando, despacha por área, traduz erro em código de saída |
+| `manifesto.py` | Lê, resolve e **escreve** o manifesto; papel principal/cliente; escrita atômica |
+| `chaves.py` | Criar, adotar e mostrar a chave de acesso. Nunca sobrescreve |
+| `conexao.py` | **Fronteira de sistema**: monta a invocação do `ssh` e nomeia o fracasso |
+| `medicao.py` | A sonda e a interpretação do que a máquina respondeu sobre si |
+| `rede.py` | Tailscale: subida, URL de login, expiração de chave de nó |
+| `preparar.py` | Roteiro de passos com efeito conferido e prova exigida |
+| `segredos.py` | Gera e descreve o arquivo de segredo de um serviço — **em modelo antigo**, ver `CONTEXTO.md` |
+| `expansao.py` | Expansão de marcas no modelo de segredo — idem |
+| `rotina.py` | Envolve a execução: trava, teto de tempo, registro, alarme |
+| `agenda.py` | Entradas do castor no agendador do sistema |
+| `correio.py` | Monta e envia o aviso. Não decide se envia |
+| `supressao.py` | Decide se este alarme já foi avisado na janela |
 
 ## Fluxos críticos
 
-[Descrição passo-a-passo do fluxo principal — o caminho mais quente do código. Sequencie chamadas/decisões.]
+**Preparar uma máquina** (`cli._preparar_maquina` → `preparar.montar_roteiro` →
+`preparar.executar`): o roteiro é uma lista de passos, cada um com `fazer`,
+`conferir` e `exige`. `executar` roda em ordem, confere o efeito de cada um e
+recusa passo cuja prova declarada ainda não aconteceu. É o que impede fechar um
+caminho de acesso antes de o novo funcionar.
+
+**Falar com a cliente** (`conexao`): três modos, e a diferença é de propósito —
+em lote (saída capturada, autenticação por chave), com senha (terminal
+repassado, só no primeiro acesso) e com terminal (para `sudo` que ainda pede
+senha). Código 255 do ssh vira `RedeInalcancavel`, `ChaveRecusada` ou
+`FalhaDeConexao`; qualquer outro código é resposta do comando remoto.
+
+**Rodar uma rotina** (`cli._despachar_rotina` → `rotina.rodar`): trava, teto de
+tempo, registro, e no caminho de falha o `correio`, filtrado pela `supressao`.
 
 ## Schema/persistência
 
-[Se houver banco: tabelas, FKs, índices. Se for arquivo: formato, naming. Se for API externa: endpoints consumidos.]
+Manifesto JSON na principal (formato em
+`referencias/chave-e-maquina.md`). Estado de execução em
+`$CASTOR_ESTADO` (padrão `~/.local/state/castor`): registros, travas e o
+arquivo de avisos já enviados.
 
 ## Deploy
 
-[Onde, como, owner. Inclua referência ao script de deploy se houver.]
+Arquivo único `castor.pyz` (`scripts/build-pyz.py`), instalado por
+`scripts/instalar.sh`, que confere a versão do Python e **fixa o interpretador
+conferido** no comando instalado. Não publica em registro de pacote.
 
 ## Testes
 
-[Framework, pastas, fixtures principais. Runner canônico (`.venv/bin/pytest`, `npm test`, `bats tests/`, etc.).]
+pytest, em `tests/`. Runner canônico: `.venv/bin/pytest` na raiz — o `python3`
+de sistema do macOS é 3.9 e não serve. Mock só na fronteira de SSH e de SMTP;
+o resto roda com código real.
 
 ## Estado atual
 
-Projeto criado em 2026-09-13 via `dev-01-define-padroes`. Aguardando primeira spec.
+Áreas `chave`, `maquina` e `rotina` de pé, com o instalador de bootstrap.
+`segredos` existe em modelo antigo — ver a seção correspondente no
+`CONTEXTO.md` antes de mexer. `servico`, `ronda` e `atualizacao` ainda sem
+verbos.

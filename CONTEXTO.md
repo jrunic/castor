@@ -136,8 +136,9 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Estado atual
 
-Em construção. A fundação, a área `rotina` e o empacotamento estão de pé, com
-suíte verde.
+Em construção. De pé, com suíte verde: a fundação, as áreas `chave`, `maquina` e
+`rotina`, e o instalador de bootstrap. Sem verbos ainda: `servico`, `ronda` e
+`atualizacao`.
 
 **A área `segredos` está em modelo antigo.** O código resolve um *modelo* com
 marca própria; a decisão em vigor é *cofre* filtrado por serviço, com `$HOME` e
@@ -148,4 +149,6 @@ converte antes de acrescentar — não estende o modelo antigo.
 
 - `docs/81-referencia/arquitetura.md` — mapa estrutural (carga sob demanda)
 - `docs/81-referencia/explicacoes/visao-geral.md` — o quê e por quê
+- `docs/81-referencia/guias/primeira-maquina.md` — pôr a primeira cliente de pé
+- `docs/81-referencia/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
 - `docs/81-referencia/decisoes/` — ADRs locais
