@@ -55,3 +55,21 @@ def test_arquivo_gerado_serve_de_environmentfile(tmp_path):
         assert "`" not in linha
         chave = linha.split("=", 1)[0]
         assert chave.replace("_", "").isalnum()
+
+
+def test_ver_reporta_tamanho_e_soma_sem_o_valor(tmp_path):
+    arquivo = tmp_path / "correio.env"
+    arquivo.write_text(f'SMTP_SENHA="{SENHA_SINTETICA}"\n', encoding="utf-8")
+
+    relato = segredos.ver(arquivo, "SMTP_SENHA")
+
+    assert SENHA_SINTETICA not in relato
+    assert str(len(SENHA_SINTETICA)) in relato
+    assert relato.count(":") >= 1
+
+
+def test_ver_com_revelar_imprime_o_valor(tmp_path):
+    arquivo = tmp_path / "correio.env"
+    arquivo.write_text(f'SMTP_SENHA="{SENHA_SINTETICA}"\n', encoding="utf-8")
+
+    assert segredos.ver(arquivo, "SMTP_SENHA", revelar=True) == SENHA_SINTETICA
