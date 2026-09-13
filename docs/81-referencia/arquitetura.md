@@ -29,8 +29,6 @@ castor/
 ├── roadmap.md        — incrementos (quando existir)
 ├── 91-diario/        — diários de sessão
 ├── docs/
-│   ├── 11-tarefas/   — specs e planos
-│   ├── 12-issues/    — bugs e demandas isoladas
 │   └── 81-referencia/ — arquitetura.md (mapa fino), decisoes/, dominio/ + quadrantes Diátaxis (explicacoes/visao-geral.md = o quê/porquê)
 └── [src/, tests/, migrations/, scripts/, ...]
 ```

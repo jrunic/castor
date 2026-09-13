@@ -77,8 +77,6 @@ CONTEXTO.md GLOSSARIO.md — contratos vivos (raiz)
 src/castor/       — pacote da aplicação
 tests/            — pytest
 91-diario/        — diários de sessão
-docs/11-tarefas/  — specs e planos datados
-docs/12-issues/   — bugs e demandas isoladas
 docs/81-referencia/decisoes/  — ADRs locais
 docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 ```
