@@ -96,6 +96,19 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Restrições
 
+- **Simplicidade vence capacidade.** A audiência é alguém com pouca
+  experiência em tecnologia operando a própria máquina. Mecanismo que exige um
+  conceito novo do usuário precisa justificar o conceito — e a régua é se a
+  pessoa consegue explicar o que fez para outra pessoa. Foi esta regra que
+  derrubou o modelo de provedor e template herdado do toolkit de origem, em
+  favor de um arquivo único de `CHAVE=valor`.
+- **O comando mede em vez de perguntar.** Diretório, usuário, sistema e versão
+  vêm da máquina, por medição, não de resposta digitada. Cada campo que o
+  usuário digita é um caminho errado que ninguém vai saber diagnosticar depois.
+- **Ordem que não queima a ponte.** Toda troca de acesso — chave, usuário,
+  rede, porta — estabelece o novo, **prova** o novo numa conexão separada, e só
+  então desativa o antigo. Enquanto a prova não passar, a desativação não
+  acontece.
 - **Repositório público não nomeia a árvore interna do autor** — nem em
   documento, nem em comentário, nem em mensagem de commit. Sem caminho
   absoluto, sem nome de cliente, sem nome de pessoa real. Varredura antes de
