@@ -178,3 +178,18 @@ def test_a_gravacao_roda_de_verdade_num_shell(tmp_path):
     assert alvo.read_text(encoding="utf-8") == 'A="b"\n'
     assert alvo.stat().st_mode & 0o077 == 0
     assert not list(alvo.parent.glob("*.novo"))
+
+
+def test_comando_de_servico_leva_o_diretorio_de_execucao():
+    """Medido na VPS: a sessão ssh cria XDG_RUNTIME_DIR, mas o cron não."""
+    comando = conexao.comando_de_servico("is-active sentinela.service")
+    assert "XDG_RUNTIME_DIR=/run/user/$(id -u)" in comando
+    assert "systemctl --user is-active sentinela.service" in comando
+
+
+def test_comando_de_registro_nao_pagina_nem_traz_tudo():
+    comando = conexao.comando_de_registro("sentinela", 50)
+    assert "journalctl --user" in comando
+    assert "-n 50" in comando
+    assert "--no-pager" in comando
+    assert "XDG_RUNTIME_DIR" in comando

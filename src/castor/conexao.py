@@ -157,3 +157,21 @@ def somar_arquivo(caminho: str) -> str:
     """A soma do arquivo do outro lado, sem trazer o conteúdo para cá."""
     return (f"sha256sum {caminho} 2>/dev/null || shasum -a 256 {caminho} "
             f"2>/dev/null || true")
+
+
+DIRETORIO_DE_EXECUCAO = "XDG_RUNTIME_DIR=/run/user/$(id -u)"
+
+
+def comando_de_servico(argumentos: str) -> str:
+    """systemctl --user precisa saber com qual barramento falar.
+
+    Na sessão ssh a variável existe porque a própria sessão a criou. Num castor
+    chamado por cron na cliente, não existiria — e o comando falharia com
+    'Failed to connect to bus', que não parece o que é.
+    """
+    return f"{DIRETORIO_DE_EXECUCAO} systemctl --user {argumentos}"
+
+
+def comando_de_registro(nome: str, linhas: int) -> str:
+    return (f"{DIRETORIO_DE_EXECUCAO} journalctl --user -u {nome}.service "
+            f"-n {linhas} --no-pager")
