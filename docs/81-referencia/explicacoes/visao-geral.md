@@ -12,21 +12,40 @@ tags: [explicacao, visao-geral, Python]
 
 # castor — o quê / para quem
 
-[A ser preenchido pela primeira spec via dev-02-escreve-spec. Uma frase: o que este projeto entrega e por que existe.]
+O castor cuida da infraestrutura de uma máquina pessoal: guarda segredos e os
+entrega aos serviços, mantém serviço de pé, roda rotina periódica avisando
+quando falha, e mantém a máquina atualizada.
 
 ## Para quem
 
-[Orlando direto via CLI? Agentes IA via API? Outros sistemas? Liste os consumidores.]
+Quem opera a própria máquina sem uma equipe de infraestrutura atrás — e o
+agente de IA que opera junto. A superfície é descobrível por `castor --help`,
+de propósito: um agente precisa conseguir descobrir o que a ferramenta faz sem
+que alguém lhe conte.
 
 ## O que faz
 
-[Uma frase por área de responsabilidade. Sem comandos nem tabelas de referência — isto é uma
-explicação. Modelo formal em `dominio/`; mapa técnico em `arquitetura.md`; comandos em `CONTEXTO.md`.]
+- **segredos** — um segredo declarado uma vez, entregue a cada serviço só no
+  que lhe cabe.
+- **servico** — instalar, remover e acompanhar serviço de sistema sem escrever
+  arquivo de unit à mão.
+- **rotina** — agendar e executar tarefa periódica com trava, teto de tempo,
+  registro e aviso por e-mail quando falha.
+- **ronda** — checagens de saúde declaradas pelo próprio usuário, não herdadas
+  de outra máquina.
+- **atualizacao** — manter atualizados os alvos declarados, e o próprio castor
+  junto.
 
 ## Escopo
 
-[O que está dentro e o que fica de fora. Fronteiras do repo.]
+**Dentro:** uma pessoa, poucas máquinas, o que cabe num manifesto declarado à
+mão.
 
-## Agente responsável
+**Fora:** frota, motor de incidentes com escalação, política de confiança e
+aprovação de versão. Quem precisa disso precisa de outra classe de ferramenta.
 
-Agente padrão deste repo: **Tech** (SRE Agentic). Toda sessão de código roda sob o comportamento do Tech.
+## Princípio
+
+Nada da máquina de quem usa é cravado no código. Nome de máquina, usuário,
+diretório e caminho vivem no manifesto — código com host embutido é defeito,
+não configuração.

@@ -6,137 +6,127 @@ escopo: repo:castor
 plataforma: "*"
 status: ativo
 descricao: Padrões técnicos canônicos e restrições do repo castor — carga default da sessão.
-tags: [contexto, dev-skills, Python]
+tags: [contexto, dev-skills, python]
 ---
 
 # CONTEXTO.md — castor
 
+## Onde o trabalho acontece
+
+Este repositório é **público**. Spec, plano, roadmap e material operacional
+**não vivem aqui** — ficam em documentos internos do autor, fora deste
+repositório. Aqui ficam código, testes, documentação de produto e ADRs de
+contrato, escritos para a audiência externa.
+
 ## Propósito
 
-[A ser preenchido pela primeira spec via dev-02-escreve-spec.]
+Toolkit de infra pessoal: guardar segredos e entregá-los aos serviços, manter
+serviço de pé, rodar rotina periódica com aviso de falha, e manter a máquina
+atualizada. Um comando, `castor`, com áreas de subcomandos em português.
+
+Para quem: quem opera a própria máquina — e o agente de IA que opera junto.
 
 ## Agente padrão
 
-**Tech** (SRE Agentic) — guardião deste repositório. Modo de atuação: Código + SRE Agentic
-(Autocura Assistida). Outros agentes podem ler/contribuir; mudanças estruturais passam por Tech.
+**Tech** — guardião deste repositório.
 
 ## Stack
 
-- **Linguagem:** Python
-- **Framework:** [a definir]
-- **Banco:** [a definir]
-- **Deploy:** [a definir]
+- **Linguagem:** Python 3.12+ (**stdlib-only** em runtime; sem código nativo)
+- **CLI:** `argparse` (stdlib)
+- **Manifesto:** JSON (stdlib — sem dependência de interpretador externo)
+- **Testes:** pytest
+- **Distribuição:** aplicação Python de arquivo único, publicada como release
+  no GitHub. **Não** publica em registro de pacote.
+- **Instalação:** script de bootstrap em shell — o único shell do produto,
+  mantido abaixo de cem linhas.
 
-## Padrões Técnicos
+## Padrões técnicos
 
 ### Naming
 
-[Preenchido pela skill dev-01-define-padroes conforme convenção da stack.
-Ver PADROES-COMUNIDADE.md da skill para tabela completa.]
+- **Arquivos e pastas:** kebab-case (`.py` em snake_case, por PEP 8)
+- **Funções e variáveis:** snake_case · **Classes:** PascalCase ·
+  **Constantes:** UPPER_SNAKE
 
 ### Linguagem
 
-- **Slug do repo/CLI:** pt-BR (`jedi-<slug>`, `jd-<slug>`)
-- **Identificadores no código:** convenção da stack (inglês para Python/JS/Go)
-- **Comentários inline:** pt-BR
-- **Commits:** tipo conventional em inglês (`feat:`, `fix:`...), descrição em pt-BR
+- **Subcomandos da CLI:** pt-BR (`castor segredos enviar`)
+- **Identificadores no código:** **pt-BR** — divergência consciente do default
+  da stack, registrada em "Decisões locais divergentes"
+- **Comentários e saída para humano:** pt-BR
+- **Commits:** tipo conventional em inglês (`feat`, `fix`, `docs`, `chore`,
+  `refactor`), assunto em pt-BR
 
 ### Segredos
 
-- **Onde:** [jedi-secrets / .env local / GCP Secret Manager / ...]
-- **Convenção de nomes:** [definir]
+O produto gerencia os segredos **do usuário**; o repositório não contém
+segredo nenhum, nem em fixture, nem em teste. O formato do arquivo gerado é
+estrito, uma atribuição por linha — consumível como `EnvironmentFile` de unit
+systemd **e** por `source` em shell.
 
 ### Bibliotecas
 
-- **Política:** [livre / requer ADR / lista permitida]
-- **Atuais:** [lista inicial]
+- **Política: stdlib primeiro.** Biblioteca externa exige ADR local.
+- **Zero código nativo** — restrição-âncora da distribuição de arquivo único.
 
 ### Estrutura
 
 ```
-CONTEXTO.md GLOSSARIO.md roadmap.md — contratos vivos (raiz)
+CONTEXTO.md GLOSSARIO.md — contratos vivos (raiz)
+src/castor/       — pacote da aplicação
+tests/            — pytest
 91-diario/        — diários de sessão
 docs/11-tarefas/  — specs e planos datados
-docs/12-issues/   — bugs e demandas isoladas (AAAAMMDD-<slug>.md, estado no frontmatter)
+docs/12-issues/   — bugs e demandas isoladas
 docs/81-referencia/decisoes/  — ADRs locais
-docs/81-referencia/dominio/   — modelo de domínio (neg-02)
-docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — quadrantes Diátaxis (ADR 20260620)
+docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 ```
-
-### Testes
-
-- **Framework:** [a definir]
-- **Pasta:** `tests/`
 
 ### Build/Run
 
-- **Setup:** [comando]
-- **Testes:** [comando]
-- **Run:** [comando]
-- **Build:** [comando]
-
-### Lint/Format
-
-- **Lint:** [comando]
-- **Format:** [comando]
-
-## Onde o trabalho acontece
-
-Este repositório é **público**. Spec, plano, roadmap e material
-operacional **não vivem aqui** — ficam em documentos internos do autor, fora
-deste repositório. Aqui ficam código, testes, documentação de produto e ADRs de
-contrato, escritos para a audiência externa.
+- **Testes:** `pytest`
+- **Run (desenvolvimento):** `python -m castor`
 
 ## Leitura obrigatória antes de spec/plano
 
 - `docs/81-referencia/arquitetura.md` — mapa estrutural
 - `GLOSSARIO.md` — vocabulário do domínio (usar estes termos, nunca sinônimos)
-- `roadmap.md` — incremento ativo e fronteiras (contrato do Passo 0 do dev-02)
 - `docs/81-referencia/dominio/` — modelo formal dos contextos que o trabalho toca
 
 ## Restrições
 
-Hard limits sempre relevantes durante a sessão (ADR `20260609-eliminacao-do-84-ia.md` — substitui antigo `docs/84-ia/restricoes.md`).
+- **Repositório público não nomeia a árvore interna do autor** — nem em
+  documento, nem em comentário, nem em mensagem de commit. Sem caminho
+  absoluto, sem nome de cliente, sem nome de pessoa real. Varredura antes de
+  todo push.
+- **Todo dado de exemplo é sintético.** Nome de máquina, de usuário e de
+  serviço em fixture, doc ou teste é inventado.
+- **Nenhum comando imprime valor de segredo na saída padrão por default.**
+  Quem precisa conferir recebe comprimento e soma de verificação; o valor só
+  sob flag explícita.
+- **Nada do host do usuário é cravado no código.** Máquina, usuário, diretório
+  e caminho vêm do manifesto. Código com nome de host embutido é defeito, não
+  configuração — foi o que travou a reutilização do toolkit de origem.
+- **Stdlib primeiro** (acima), e **zero código nativo**.
+- **Runner de testes canônico:** `pytest` na raiz do repositório.
+- Implementação que contradiz `docs/81-referencia/dominio/` ou `GLOSSARIO.md`
+  atualiza o doc no mesmo commit.
 
-- **Runner de testes canônico:** [comando — ex: `.venv/bin/pytest`]
-- **Idioma da saída para humano:** pt-BR
-- **Comentários inline:** pt-BR
-- **Slug do repo/CLI:** pt-BR (`jedi-<slug>`, `jd-<slug>`)
-- **Implementação que contradiz `docs/81-referencia/dominio/` ou `GLOSSARIO.md` atualiza o doc no mesmo commit;** divergência que vira decisão arquitetural → dev-07-cria-adr (ADR `20260705-familia-neg-skills-negocio`)
-- [Instanciar por CÓPIA as Restrições do documento de padrões da classe de app, quando houver — herança explícita]
-- [Adicionar regras com histórico ou alto custo de violar — não documentar o óbvio]
+## Decisões locais divergentes
 
-## Decisões Herdadas (explícitas)
+- **Identificadores de código em pt-BR**, em vez do inglês que a convenção da
+  linguagem sugere. Motivo: a audiência que lê e opera este código é
+  lusófona — o usuário e o agente de IA dele —, e a CLI já expõe subcomandos
+  em português. Precedente na mesma família de produto.
 
-Repetidas aqui mesmo presentes em AMBIENTE.md / USUARIO.md / AGENTE.md, para evitar herança implícita:
+## Estado atual
 
-- Kebab-case em paths + comentários em pt-BR (AMBIENTE.md global)
-- Python 3.12 / Node 22 LTS pinados; sem `.python-version` ou `.nvmrc` (ADR `20260511-versoes-fixas-runtime-frota`)
-- Segredos OAuth em jedi-secrets (ADR `20260510-oauth2-google-credenciais-infra-jedi-secrets`)
-- Sem comandos git destrutivos sem confirmação; hook `dev-20-bloqueia-comandos-perigosos` em produção
-- Ferramentas canônicas vencem APIs diretas (ADR `ferramentas-canonicas.md`)
-- Padrão Ação Documentada para destrutivos (ADR `padrao-acao-documentada.md`)
-- Infra genérica antes do tenant específico (ADR `infra-generica-antes-do-tenant-especifico.md`)
-- Conhecimento destilado em `docs/81-referencia/`; restrições em `CONTEXTO.md` (ADR `20260609-eliminacao-do-84-ia.md`)
-
-## Decisões Locais Divergentes
-
-[Listar onde este projeto diverge de regras globais. Cada divergência idealmente tem ADR em docs/81-referencia/decisoes/.]
-
-## Estado Atual
-
-Projeto criado em 2026-09-13 via `dev-01-define-padroes`. Aguardando primeira spec via `dev-02-escreve-spec`.
-
-## Pendências
-
-- [ ] Primeira spec via dev-02-escreve-spec
-- [ ] Primeiro plano via dev-03-escreve-plano
-- [ ] Setup de testes (framework + pasta + primeiro teste exemplar)
+Repositório criado em 2026-09-13. Primeira fatia especificada e aprovada;
+implementação ainda não começou.
 
 ## Referências
 
-- [[AMBIENTE.md]] — convenções globais da plataforma
-- [[USUARIO.md]] — perfil do Orlando
-- [[81-referencia/arquitetura.md]] — mapa estrutural do repo (mapa fino, isento — carga sob demanda)
-- [[81-referencia/explicacoes/visao-geral.md]] — o quê e por quê (quadrante explicação, carga sob demanda)
-- [[81-referencia/decisoes/]] — ADRs locais
+- `docs/81-referencia/arquitetura.md` — mapa estrutural (carga sob demanda)
+- `docs/81-referencia/explicacoes/visao-geral.md` — o quê e por quê
+- `docs/81-referencia/decisoes/` — ADRs locais
