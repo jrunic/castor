@@ -1,11 +1,7 @@
 #!/bin/sh
-# Instalador de bootstrap do castor. É o único shell do produto: existe porque
-# a máquina ainda não tem o castor para se instalar sozinha.
-#
-# Variáveis de ambiente:
-#   CASTOR_DESTINO   onde instalar (padrão: ~/.local/bin)
-#   CASTOR_ARTEFATO  caminho de um castor.pyz local, no lugar do download
-#   CASTOR_URL       de onde baixar, no lugar da release mais recente
+# Instalador de bootstrap do castor — o único shell do produto, porque a máquina
+# ainda não tem o castor para se instalar sozinha. Variáveis de ambiente:
+# CASTOR_DESTINO, CASTOR_ARTEFATO, CASTOR_URL, CASTOR_SEM_SOMA (veja o README).
 set -eu
 
 REPO="jrunic/castor"
@@ -17,6 +13,16 @@ MINIMO_MENOR=12
 falhar() {
     printf '%s\n' "$1" >&2
     exit 1
+}
+
+somar() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    else
+        falhar "não achei sha256sum nem shasum para conferir o que baixei."
+    fi
 }
 
 INTERPRETE="$(command -v python3 || true)"
@@ -45,13 +51,25 @@ else
     curl -fsSL --connect-timeout 15 --max-time 300 "$URL" \
         -o "$TEMPORARIO/castor.pyz" && BAIXOU=0 || BAIXOU=$?
     if [ "$BAIXOU" -ne 0 ]; then
-        # 22 é o servidor respondendo que não tem (404 e afins); o resto é a
-        # rede não chegar lá. Culpar a internet num 404 manda quem lê procurar
-        # no lugar errado.
+        # 22 é o servidor dizendo que não tem; o resto é a rede não chegar lá.
         if [ "$BAIXOU" -eq 22 ]; then
             falhar "o servidor respondeu que ${URL} não existe. Confira se já há release publicada."
         fi
         falhar "não consegui baixar ${URL}. A máquina tem saída para a internet?"
+    fi
+
+    # A soma publicada pega arquivo truncado e artefato trocado sem que a soma
+    # fosse trocada junto. NÃO cobre origem comprometida: soma e arquivo vêm do
+    # mesmo lugar, e quem puder trocar um troca o outro.
+    if [ -z "${CASTOR_SEM_SOMA:-}" ]; then
+        curl -fsSL --connect-timeout 15 "${URL}.sha256" \
+            -o "$TEMPORARIO/soma" && TEVE=0 || TEVE=$?
+        [ "$TEVE" -eq 0 ] ||
+            falhar "não achei a soma publicada em ${URL}.sha256, então não instalo. Para instalar assim mesmo: CASTOR_SEM_SOMA=1."
+        ESPERADA="$(awk '{print $1}' "$TEMPORARIO/soma")"
+        OBTIDA="$(somar "$TEMPORARIO/castor.pyz")"
+        [ "$ESPERADA" = "$OBTIDA" ] ||
+            falhar "o arquivo baixado não bate com a soma publicada. Esperava ${ESPERADA}, veio ${OBTIDA}. Nada foi instalado."
     fi
 fi
 
@@ -61,8 +79,8 @@ fi
 
 mkdir -p "$DESTINO"
 cp "$TEMPORARIO/castor.pyz" "$DESTINO/castor.pyz"
-# O envoltório fixa o interpretador conferido acima. Chamar 'python3' do PATH
-# instalaria com um python e rodaria com outro — no macOS, com o 3.9 do sistema.
+# Fixa o interpretador conferido: 'python3' do PATH instalaria com um e rodaria
+# com outro — no macOS, com o 3.9 do sistema.
 cat > "$DESTINO/castor" <<ENVOLTORIO
 #!/bin/sh
 exec "$INTERPRETE" "\$(dirname "\$0")/castor.pyz" "\$@"

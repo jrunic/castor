@@ -30,9 +30,13 @@ Precisa de Python 3.12 ou mais novo.
 curl -fsSL https://raw.githubusercontent.com/jrunic/castor/main/scripts/instalar.sh | sh
 ```
 
-Instala em `~/.local/bin/castor`. O instalador confere a versão do Python antes
-e confere que o comando responde depois — se qualquer uma das duas falhar, ele
-não anuncia sucesso.
+Instala em `~/.local/bin/castor`. O instalador confere três coisas: a versão do
+Python antes, a soma publicada do que baixou, e que o comando responde depois.
+Se qualquer uma falhar, ele não instala e não anuncia sucesso.
+
+A soma pega arquivo truncado e artefato trocado sem que a soma fosse trocada
+junto. Ela **não** cobre origem comprometida — arquivo e soma vêm do mesmo
+lugar, e quem puder trocar um troca o outro.
 
 ## Começar
 

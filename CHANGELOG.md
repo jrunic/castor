@@ -11,8 +11,13 @@ tags: [changelog]
 
 # Histórico de versões
 
-## Não publicado
+## 0.1.1 — 13/09/2026
 
+- **O instalador confere a soma publicada** do que baixou, antes de instalar.
+  Sem a soma no lugar, ele **não instala** — quem quiser instalar assim mesmo
+  passa `CASTOR_SEM_SOMA=1`. A soma pega arquivo truncado e artefato trocado sem
+  que a soma fosse trocada junto; ela **não** cobre origem comprometida, porque
+  arquivo e soma vêm do mesmo lugar.
 - **`maquina preparar` instala o tailscale na cliente.** Na 0.1.0 ele só tentava
   subir a rede numa máquina onde o tailscale podia não existir — e o passo não
   conferia nada, então a falha passava em silêncio e só aparecia depois, como
