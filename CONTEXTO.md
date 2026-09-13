@@ -138,9 +138,8 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 **As sete áreas de pé**, com suíte verde: `chave`, `maquina`, `segredos`,
 `servico`, `rotina`, `ronda` e `atualizacao`, mais o instalador de bootstrap.
-Última release publicada: 0.1.1, de 13/09/2026 — o que veio depois dela está no
-`CHANGELOG.md` em "Não publicado". Toda mudança de comportamento entra no
-`CHANGELOG.md` no mesmo commit.
+Última release publicada: **0.2.0**, de 13/09/2026. Toda mudança de
+comportamento entra no `CHANGELOG.md` no mesmo commit.
 
 ## Referências
 
