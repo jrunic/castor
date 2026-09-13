@@ -136,9 +136,10 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Estado atual
 
-Em construção. De pé, com suíte verde: a fundação, as áreas `chave`, `maquina` e
-`rotina`, e o instalador de bootstrap. Sem verbos ainda: `servico`, `ronda` e
-`atualizacao`.
+**0.1.0 publicada** em 13/09/2026. De pé, com suíte verde: a fundação, as áreas
+`chave`, `maquina` e `rotina`, e o instalador de bootstrap. Sem verbos ainda:
+`servico`, `ronda` e `atualizacao`. Toda mudança de comportamento entra no
+`CHANGELOG.md` no mesmo commit.
 
 **A área `segredos` está em modelo antigo.** O código resolve um *modelo* com
 marca própria; a decisão em vigor é *cofre* filtrado por serviço, com `$HOME` e
