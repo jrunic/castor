@@ -164,3 +164,67 @@ def test_gravacao_que_falha_devolve_codigo_e_nomeia_o_arquivo(bancada,
     erro = capsys.readouterr().err
     assert "correio.env" in erro
     assert SENHA_SINTETICA not in erro
+
+
+def respondendo(soma_remota):
+    def executar(destino, comando, **opcoes):
+        if "sha256sum" in comando:
+            return conexao.Saida(codigo=0, texto=f"{soma_remota}  arquivo\n",
+                                 erro="")
+        return conexao.Saida(codigo=0, texto="", erro="")
+    return executar
+
+
+def soma_esperada(manifesto):
+    from castor import segredos as mod_segredos
+    from castor.manifesto import ler
+    lido = ler(manifesto)
+    return mod_segredos.soma(mod_segredos.montar(
+        lido, "correio", "represa",
+        {"SMTP_SERVIDOR": "smtp.exemplo.test", "SMTP_SENHA": SENHA_SINTETICA}))
+
+
+def test_estado_em_dia_quando_a_soma_bate(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", respondendo(soma_esperada(bancada)))
+    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 0
+    assert "em dia" in capsys.readouterr().out
+
+
+def test_estado_desatualizado_devolve_codigo_proprio(bancada, monkeypatch,
+                                                     capsys):
+    monkeypatch.setattr(conexao, "executar", respondendo("0" * 64))
+    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 8
+    assert "desatualizado" in capsys.readouterr().out
+
+
+def test_arquivo_ausente_na_cliente_e_reportado_como_ausente(bancada,
+                                                             monkeypatch,
+                                                             capsys):
+    monkeypatch.setattr(conexao, "executar", respondendo(""))
+    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 8
+    assert "ausente" in capsys.readouterr().out
+
+
+def test_estado_nao_imprime_valor_nenhum(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", respondendo("0" * 64))
+    principal(["--manifesto", str(bancada), "segredos", "estado"])
+    saida = capsys.readouterr()
+    assert SENHA_SINTETICA not in saida.out + saida.err
+
+
+def test_maquina_inalcancavel_nao_derruba_o_relatorio_inteiro(bancada,
+                                                              monkeypatch,
+                                                              capsys):
+    """Uma máquina fora do ar não pode esconder o estado das outras."""
+    def cair(destino, comando, **opcoes):
+        return conexao.Saida(codigo=255, texto="",
+                             erro="ssh: Could not resolve hostname represa")
+    monkeypatch.setattr(conexao, "executar", cair)
+    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 8
+    assert "inalcançável" in capsys.readouterr().out
+
+
+def test_a_principal_nao_entra_no_relatorio(bancada, monkeypatch, capsys):
+    monkeypatch.setattr(conexao, "executar", respondendo(soma_esperada(bancada)))
+    principal(["--manifesto", str(bancada), "segredos", "estado"])
+    assert "bancada" not in capsys.readouterr().out

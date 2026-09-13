@@ -105,6 +105,10 @@ def construir_analisador() -> argparse.ArgumentParser:
     enviar.add_argument("servico")
     enviar.add_argument("--maquina", required=True)
 
+    verbos.add_parser("estado",
+                      help="diz, por serviço e máquina, se o que está lá "
+                           "corresponde ao que o cofre produziria hoje")
+
     ver = verbos.add_parser("ver", help="descreve a variável sem imprimir o valor")
     ver.add_argument("arquivo")
     ver.add_argument("variavel")
@@ -244,7 +248,49 @@ def _enviar_servico(opcoes) -> int:
     return 0
 
 
+def _estado_dos_segredos(opcoes) -> int:
+    """Afirma sobre o ARQUIVO, não sobre o processo que o consome."""
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    valores = _cofre_de(lido)
+    pendencias = 0
+    for servico, declarado in sorted(lido.dados.get("servicos", {}).items()):
+        alvos = declarado.get("maquinas") or [
+            nome for nome in lido.nomes() if not lido.maquina(nome).e_principal]
+        for maquina in alvos:
+            arquivo = mod_segredos.destino_de(lido, servico, maquina)
+            esperada = mod_segredos.soma(
+                mod_segredos.montar(lido, servico, maquina, valores))
+            try:
+                destino_ssh = _destino_de(opcoes, maquina)
+                saida = mod_conexao.conferir(
+                    mod_conexao.executar(destino_ssh,
+                                         mod_conexao.somar_arquivo(arquivo)),
+                    destino_ssh)
+                partes = saida.texto.split()
+                # Só conta como soma o que TEM cara de soma. Sem isto, qualquer
+                # ruído da máquina viraria "desatualizado" em vez de "ausente",
+                # e quem lê procuraria a diferença num arquivo que não existe.
+                obtida = partes[0] if partes and len(partes[0]) == 64 and all(
+                    letra in "0123456789abcdef" for letra in partes[0]) else ""
+            except (mod_conexao.FalhaDeConexao, ErroDeManifesto) as erro:
+                print(f"{servico}\t{maquina}\tinalcançável\t{erro}")
+                pendencias += 1
+                continue
+            if not obtida:
+                print(f"{servico}\t{maquina}\tausente\t{arquivo}")
+                pendencias += 1
+            elif obtida == esperada:
+                print(f"{servico}\t{maquina}\tem dia\t{esperada[:12]}")
+            else:
+                print(f"{servico}\t{maquina}\tdesatualizado\t"
+                      f"esperado {esperada[:12]}, lá {obtida[:12]}")
+                pendencias += 1
+    return 8 if pendencias else 0
+
+
 def _despachar_segredos(opcoes) -> int:
+    if opcoes.verbo == "estado":
+        return _estado_dos_segredos(opcoes)
     if opcoes.verbo == "enviar":
         try:
             return _enviar_servico(opcoes)
