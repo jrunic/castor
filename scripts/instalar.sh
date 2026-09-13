@@ -5,6 +5,7 @@
 # Variáveis de ambiente:
 #   CASTOR_DESTINO   onde instalar (padrão: ~/.local/bin)
 #   CASTOR_ARTEFATO  caminho de um castor.pyz local, no lugar do download
+#   CASTOR_URL       de onde baixar, no lugar da release mais recente
 set -eu
 
 REPO="jrunic/castor"
@@ -40,9 +41,18 @@ if [ -n "$ARTEFATO" ]; then
         falhar "não achei o artefato em ${ARTEFATO}."
 else
     command -v curl >/dev/null 2>&1 || falhar "não achei curl para baixar o castor."
-    URL="https://github.com/${REPO}/releases/latest/download/castor.pyz"
-    curl -fsSL "$URL" -o "$TEMPORARIO/castor.pyz" ||
+    URL="${CASTOR_URL:-https://github.com/${REPO}/releases/latest/download/castor.pyz}"
+    curl -fsSL --connect-timeout 15 --max-time 300 "$URL" \
+        -o "$TEMPORARIO/castor.pyz" && BAIXOU=0 || BAIXOU=$?
+    if [ "$BAIXOU" -ne 0 ]; then
+        # 22 é o servidor respondendo que não tem (404 e afins); o resto é a
+        # rede não chegar lá. Culpar a internet num 404 manda quem lê procurar
+        # no lugar errado.
+        if [ "$BAIXOU" -eq 22 ]; then
+            falhar "o servidor respondeu que ${URL} não existe. Confira se já há release publicada."
+        fi
         falhar "não consegui baixar ${URL}. A máquina tem saída para a internet?"
+    fi
 fi
 
 # Confere antes de instalar: o que não responde como castor não vira castor.

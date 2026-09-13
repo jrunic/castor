@@ -138,3 +138,52 @@ def test_o_comando_instalado_nao_depende_do_python3_do_PATH(tmp_path):
         env={**os.environ, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
     assert sem_atalho.returncode == 0, sem_atalho.stderr
     assert sem_atalho.stdout.strip()
+
+
+def servidor_que_responde(codigo, corpo=b""):
+    """Servidor HTTP de um tiro, em localhost. Sem rede externa no teste."""
+    import http.server
+    import threading
+
+    class Atendente(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(codigo)
+            self.send_header("Content-Length", str(len(corpo)))
+            self.end_headers()
+            self.wfile.write(corpo)
+
+        def log_message(self, *args):
+            pass
+
+    servidor = http.server.HTTPServer(("127.0.0.1", 0), Atendente)
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+    return servidor, f"http://127.0.0.1:{servidor.server_port}/castor.pyz"
+
+
+def test_release_que_nao_existe_nao_e_relatada_como_falta_de_internet(tmp_path):
+    """404 manda conferir a release; culpar a rede manda procurar no lugar errado.
+
+    Medido em 13/09/2026 na bancada: sem release publicada, o instalador dizia
+    'a máquina tem saída para a internet?' numa máquina com internet.
+    """
+    servidor, url = servidor_que_responde(404)
+    try:
+        concluido = instalar(tmp_path, PATH=com_python_novo(tmp_path),
+                             CASTOR_URL=url,
+                             CASTOR_DESTINO=str(tmp_path / "bin"))
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+    assert concluido.returncode != 0
+    assert "release" in concluido.stderr
+    assert "internet" not in concluido.stderr
+
+
+def test_servidor_fora_do_ar_continua_sendo_relatado_como_rede(tmp_path):
+    servidor, url = servidor_que_responde(200)
+    servidor.shutdown()
+    servidor.server_close()  # fecha o socket: porta que aceita e não serve trava
+    concluido = instalar(tmp_path, PATH=com_python_novo(tmp_path),
+                         CASTOR_URL=url, CASTOR_DESTINO=str(tmp_path / "bin"))
+    assert concluido.returncode != 0
+    assert "internet" in concluido.stderr
