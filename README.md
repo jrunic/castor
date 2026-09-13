@@ -59,8 +59,9 @@ O passo a passo está em
 | `segredos` | `gerar`, `enviar`, `estado`, `ver` | qualquer sistema |
 | `servico` | `instalar`, `remover`, `estado`, `reiniciar`, `registro` | Linux |
 | `rotina` | `rodar`, `agendar`, `listar` | Linux |
+| `ronda` | `rodar`, `estado` | roda na principal, em qualquer sistema |
 
-`ronda` e `atualizacao` aparecem em `castor --help` e ainda não têm verbos.
+`atualizacao` aparece em `castor --help` e ainda não tem verbos.
 
 ## Três regras que o castor segue
 

@@ -26,5 +26,6 @@ indice: oculto
 ## referencias
 
 - `referencias/chave-e-maquina.md` — Referência das áreas chave e maquina — verbos, opções, códigos de saída e o formato do manifesto
+- `referencias/ronda.md` — Referência da área ronda — os três tipos de checagem, onde cada um roda, o aviso por mudança de estado e o código de saída 10
 - `referencias/segredos-e-cofre.md` — Referência da área segredos — o cofre, as duas marcas, os quatro verbos, o manifesto-da-cliente e os códigos de saída
 - `referencias/servico.md` — Referência da área servico — os cinco verbos, o que a unit gerada contém e por quê, o linger, e o código de saída 9

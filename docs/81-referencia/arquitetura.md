@@ -49,6 +49,7 @@ castor/
 | `rede.py` | Tailscale: subida, URL de login, expiração de chave de nó |
 | `preparar.py` | Roteiro de passos com efeito conferido e prova exigida |
 | `unidade.py` | O texto da unit systemd de um serviço, e o que ela recusa |
+| `ronda.py` | As checagens declaradas, o que cada uma conclui, e a comparação com a ronda anterior |
 | `cofre.py` | Ler o cofre, recusar permissão frouxa, filtrar por serviço, resolver as duas marcas |
 | `segredos.py` | Montar o conteúdo de um serviço, somar, e descrever sem revelar |
 | `cliente.py` | Montar o manifesto-da-cliente a partir do da principal |
@@ -97,5 +98,5 @@ o resto roda com código real.
 
 ## Estado atual
 
-Áreas `chave`, `maquina`, `segredos`, `servico` e `rotina` de pé, com o
-instalador de bootstrap. `ronda` e `atualizacao` ainda sem verbos.
+Áreas `chave`, `maquina`, `segredos`, `servico`, `rotina` e `ronda` de pé, com o
+instalador de bootstrap. `atualizacao` ainda sem verbos.

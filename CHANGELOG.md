@@ -13,6 +13,22 @@ tags: [changelog]
 
 ## Não publicado
 
+- **A área `ronda`**: `rodar` e `estado`. Você declara as checagens no
+  manifesto — de comando, de serviço, ou de expiração de chave de nó — e a ronda
+  **roda na máquina principal**, distribuindo as próprias perguntas. Não há
+  limiar nem linha de base inventados pelo castor: quem declara o que conta como
+  "bem" é quem opera. Código de saída **10** quando alguma checagem falha.
+- **A checagem de expiração roda na principal**, que é o único lugar de onde ela
+  é legível — uma máquina não lê a própria expiração de chave de nó. Efeito
+  colateral útil: máquina fora do ar não impede essa checagem.
+- **Máquina inalcançável é uma falha só**, não uma por checagem dela.
+- **O aviso é por mudança de estado**: o que passou a falhar avisa uma vez por
+  janela; o que voltou ao normal avisa também, e destrava o próximo aviso — sem
+  isso, uma falha nova logo depois de um "voltou ao normal" ficaria muda até a
+  janela vencer.
+- **`ronda rodar --seco`** roda tudo sem avisar e sem gravar, para declarar
+  checagem nova sem disparar e-mail.
+
 - **A área `servico`**: `instalar`, `remover`, `estado`, `reiniciar` e
   `registro`. A unit systemd é gerada do manifesto — sem wrapper de shell, com
   `EnvironmentFile=` apontando para o que a área `segredos` entrega. `instalar`

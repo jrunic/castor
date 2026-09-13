@@ -137,9 +137,9 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 ## Estado atual
 
 **0.1.1 publicada** em 13/09/2026. De pé, com suíte verde: a fundação, as áreas
-`chave`, `maquina`, `segredos`, `servico` e `rotina`, e o instalador de
-bootstrap. Sem verbos ainda: `ronda` e `atualizacao`. Toda mudança de
-comportamento entra no `CHANGELOG.md` no mesmo commit.
+`chave`, `maquina`, `segredos`, `servico`, `rotina` e `ronda`, e o instalador de
+bootstrap. Sem verbos ainda: `atualizacao`. Toda mudança de comportamento entra
+no `CHANGELOG.md` no mesmo commit.
 
 ## Referências
 
@@ -149,4 +149,5 @@ comportamento entra no `CHANGELOG.md` no mesmo commit.
 - `docs/81-referencia/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
 - `docs/81-referencia/referencias/segredos-e-cofre.md` — o cofre, as marcas, a entrega
 - `docs/81-referencia/referencias/servico.md` — a unit gerada, o linger, o código 9
+- `docs/81-referencia/referencias/ronda.md` — os três tipos de checagem, o código 10
 - `docs/81-referencia/decisoes/` — ADRs locais

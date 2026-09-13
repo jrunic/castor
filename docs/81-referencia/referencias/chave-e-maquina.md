@@ -61,6 +61,7 @@ Nenhum acumula dois sentidos. É por eles que um agente distingue o que fazer.
 | 7 | roteiro de preparo parado | passo sem efeito, prova faltando ou medição incompleta — a mensagem diz qual |
 | 8 | algo ausente ou desatualizado | ver [`segredos-e-cofre.md`](segredos-e-cofre.md) |
 | 9 | o serviço não ficou ativo ou não parou | ver [`servico.md`](servico.md) |
+| 10 | alguma checagem da ronda falhou | ver [`ronda.md`](ronda.md) |
 
 ## O manifesto
 
