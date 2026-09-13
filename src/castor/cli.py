@@ -1,6 +1,8 @@
 import argparse
 import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 from castor import manifesto as mod_manifesto
@@ -36,10 +38,95 @@ def construir_analisador() -> argparse.ArgumentParser:
     ver.add_argument("--revelar", action="store_true",
                      help="imprime o VALOR do segredo na saída padrão")
 
+    rotina = areas.add_parser("rotina", help="área rotina")
+    verbos_rotina = rotina.add_subparsers(dest="verbo", metavar="verbo", required=True)
+
+    rodar = verbos_rotina.add_parser("rodar", help="executa a rotina com trava, teto e registro")
+    rodar.add_argument("nome")
+    rodar.add_argument("--maquina", required=True)
+
+    agendar = verbos_rotina.add_parser("agendar", help="põe a rotina no agendador do sistema")
+    agendar.add_argument("nome")
+    agendar.add_argument("--maquina", required=True)
+
+    verbos_rotina.add_parser("listar", help="mostra as rotinas do castor no agendador")
+
     for nome in AREAS:
-        if nome != "segredos":
+        if nome not in ("segredos", "rotina"):
             areas.add_parser(nome, help=f"área {nome}")
     return analisador
+
+
+def _raiz_do_estado() -> Path:
+    return Path(os.environ.get("CASTOR_ESTADO", Path.home() / ".local/state/castor"))
+
+
+def _montar_aviso(opcoes, raiz: Path):
+    """Devolve (remetente, supressor, de, para).
+
+    Sem configuração de aviso o comando continua rodando — mas dizendo, em voz
+    alta, que ninguém será avisado. Falhar em silêncio aqui é o pior desfecho:
+    a rotina roda, quebra, e nada chega.
+    """
+    from castor.correio import RemetenteSMTP
+    from castor.supressao import Supressor
+
+    config = mod_manifesto.ler(Path(opcoes.manifesto)).dados.get("aviso") or {}
+    supressor = Supressor(raiz / "avisos.json",
+                          janela_em_minutos=config.get("janela_em_minutos", 60))
+
+    campos = ("servidor", "porta", "usuario", "de", "para", "arquivo_de_segredo", "variavel")
+    faltando = [c for c in campos if not config.get(c)]
+    if faltando:
+        print(f"[castor] aviso desligado: falta {', '.join(faltando)} em 'aviso' do "
+              f"manifesto. A rotina roda, mas a falha não chega a ninguém.",
+              file=sys.stderr)
+        return None, supressor, "", ""
+
+    senha = mod_segredos.ver(Path(config["arquivo_de_segredo"]), config["variavel"],
+                             revelar=True)
+    remetente = RemetenteSMTP(servidor=config["servidor"], porta=int(config["porta"]),
+                              usuario=config["usuario"], senha=senha)
+    return remetente, supressor, config["de"], config["para"]
+
+
+def _despachar_rotina(opcoes) -> int:
+    from castor import agenda as mod_agenda
+    from castor import rotina as mod_rotina
+
+    if opcoes.verbo == "listar":
+        tabela = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
+        for agendada in mod_agenda.listar_de(tabela):
+            print(f"{agendada.nome}\t{agendada.quando}")
+        return 0
+
+    declarado = mod_manifesto.ler(Path(opcoes.manifesto)).dados.get("rotinas", {})
+    if opcoes.nome not in declarado:
+        print(f"rotina '{opcoes.nome}' não está declarada no manifesto "
+              f"{opcoes.manifesto}.", file=sys.stderr)
+        return 1
+
+    if opcoes.verbo == "agendar":
+        tabela = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
+        nova = mod_agenda.agendar_em(
+            tabela, nome=opcoes.nome, quando=declarado[opcoes.nome]["quando"],
+            comando=f"castor rotina rodar {opcoes.nome} --maquina {opcoes.maquina}",
+        )
+        subprocess.run(["crontab", "-"], input=nova, text=True, check=True)
+        print(f"agendada: {opcoes.nome}")
+        return 0
+
+    raiz = _raiz_do_estado()
+    remetente, supressor, de, para = _montar_aviso(opcoes, raiz)
+    resultado = mod_rotina.rodar(
+        opcoes.nome, declarado[opcoes.nome]["comando"],
+        registro=raiz / "registros" / f"{opcoes.nome}.log",
+        trava=raiz / "travas" / f"{opcoes.nome}.trava",
+        teto_em_segundos=declarado[opcoes.nome].get("teto_em_segundos"),
+        remetente=remetente, supressor=supressor, de=de, para=para,
+        maquina=opcoes.maquina, agora=time.time(),
+    )
+    return resultado.codigo
 
 
 def _despachar_segredos(opcoes) -> int:
@@ -57,6 +144,8 @@ def principal(argumentos: list[str] | None = None) -> int:
     try:
         if opcoes.area == "segredos":
             return _despachar_segredos(opcoes)
+        if opcoes.area == "rotina":
+            return _despachar_rotina(opcoes)
     except ErroDeManifesto as erro:
         print(str(erro), file=sys.stderr)
         return 1

@@ -22,3 +22,53 @@ def test_corpo_muito_longo_e_truncado_no_fim():
     conteudo = mensagem.get_content()
     assert len(conteudo) < 9000
     assert "truncado" in conteudo
+
+
+from castor.correio import RemetenteSMTP
+
+
+class ClienteDeMentira:
+    def __init__(self):
+        self.autenticou = None
+        self.enviou = None
+        self.fechou = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.fechou = True
+
+    def starttls(self):
+        pass
+
+    def login(self, usuario, senha):
+        self.autenticou = (usuario, senha)
+
+    def send_message(self, mensagem):
+        self.enviou = mensagem
+
+
+def test_remetente_autentica_e_envia():
+    cliente = ClienteDeMentira()
+    remetente = RemetenteSMTP(
+        servidor="smtp.exemplo.test", porta=587,
+        usuario="ana", senha="abacaxi-de-mentira",
+        abrir=lambda servidor, porta: cliente,
+    )
+    mensagem = montar_mensagem(
+        Aviso(alarme="a", maquina="m", assunto_extra="", corpo="c"),
+        de="c@t.test", para="a@t.test",
+    )
+
+    remetente.enviar(mensagem)
+
+    assert cliente.autenticou == ("ana", "abacaxi-de-mentira")
+    assert cliente.enviou is mensagem
+    assert cliente.fechou is True
+
+
+def test_senha_nao_aparece_na_representacao_do_remetente():
+    remetente = RemetenteSMTP(servidor="s", porta=1, usuario="u",
+                              senha="abacaxi-de-mentira", abrir=lambda *_: None)
+    assert "abacaxi-de-mentira" not in repr(remetente)
