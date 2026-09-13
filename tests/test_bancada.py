@@ -113,9 +113,11 @@ def test_entrega_ponta_a_ponta_contra_maquina_real():
     print(f"\nenviado: {enviado.stdout.strip()}")
 
     em_dia = castor("segredos", "estado")
-    assert em_dia.returncode == 0, em_dia.stdout + em_dia.stderr
-    assert "em dia" in em_dia.stdout
-    print(f"estado: {em_dia.stdout.strip()}")
+    # A linha do serviço entregue, não o código global: a bancada pode ter
+    # outros serviços em outros estados, e isto aqui mede este.
+    linha = next(l for l in em_dia.stdout.splitlines() if l.startswith("correio"))
+    assert "em dia" in linha, em_dia.stdout
+    print(f"estado: {linha}")
 
     original = Path(COFRE).read_text(encoding="utf-8")
     try:
@@ -124,8 +126,10 @@ def test_entrega_ponta_a_ponta_contra_maquina_real():
             encoding="utf-8")
         depois = castor("segredos", "estado")
         assert depois.returncode == 8, depois.stdout
-        assert "desatualizado" in depois.stdout
-        print(f"depois de mexer no cofre: {depois.stdout.strip()}")
+        linha = next(l for l in depois.stdout.splitlines()
+                     if l.startswith("correio"))
+        assert "desatualizado" in linha, depois.stdout
+        print(f"depois de mexer no cofre: {linha}")
     finally:
         Path(COFRE).write_text(original, encoding="utf-8")
 
@@ -142,3 +146,69 @@ def test_o_segredo_chegou_com_permissao_restrita(destino):
     saida = conexao.executar(destino, "stat -c %a ~/.config/castor/correio.env")
     assert saida.texto.strip() == "600", saida.texto
     print(f"\npermissão do arquivo do serviço: {saida.texto.strip()}")
+
+
+@entrega
+def test_o_servico_esta_de_pe_com_o_linger_ligado(destino):
+    """Duas medições, e nenhuma sozinha prova o que interessa.
+
+    O QUE ESTE TESTE NÃO PROVA: que o serviço sobrevive ao gerenciador de
+    usuário sendo derrubado. Provar isso exigiria terminar a sessão do usuário
+    na máquina, destrutivo demais para teste automatizado. O que ele prova são
+    as duas condições necessárias — serviço ativo e linger ligado, que é o
+    mecanismo pelo qual ele sobrevive.
+    """
+    instalado = castor("servico", "instalar", "vigia", "--maquina", MAQUINA)
+    assert instalado.returncode == 0, instalado.stderr
+    print(f"\ninstalado: {instalado.stdout.strip()}")
+
+    linger = conexao.executar(destino, "loginctl show-user $(id -un) | "
+                                       "grep -i linger")
+    assert "Linger=yes" in linger.texto, linger.texto
+
+    ativo = conexao.executar(
+        destino, conexao.comando_de_servico("is-active vigia.service"))
+    assert ativo.texto.strip() == "active", ativo.texto
+    print(f"linger: {linger.texto.strip()} | serviço: {ativo.texto.strip()}")
+
+
+@entrega
+def test_a_unit_gerada_passa_no_verificador_do_systemd(destino):
+    """Diretiva em seção errada não dá erro — só é ignorada. Quem diz é o systemd."""
+    saida = conexao.executar(
+        destino, "systemd-analyze verify "
+                 "~/.config/systemd/user/vigia.service 2>&1 || true")
+    assert "Unknown" not in saida.texto, saida.texto
+    print(f"\nsystemd-analyze: {saida.texto.strip() or 'sem queixa'}")
+
+
+@entrega
+def test_segredo_trocado_chega_ao_processo_depois_do_reiniciar():
+    """A volta que faltava: trocar no cofre, entregar, reiniciar, e o processo vê."""
+    original = Path(COFRE).read_text(encoding="utf-8")
+    try:
+        Path(COFRE).write_text(
+            original.replace("abacaxi-de-mentira", "trocado-de-mentira"),
+            encoding="utf-8")
+        assert castor("segredos", "enviar", "vigia",
+                      "--maquina", MAQUINA).returncode == 0
+        reiniciado = castor("servico", "reiniciar", "vigia", "--maquina", MAQUINA)
+        assert reiniciado.returncode == 0, reiniciado.stderr
+        registro = castor("servico", "registro", "vigia", "--maquina", MAQUINA,
+                          "--linhas", "20")
+        assert "trocado-de-mentira" in registro.stdout, registro.stdout
+        print("\no processo viu o valor novo depois do reiniciar")
+    finally:
+        Path(COFRE).write_text(original, encoding="utf-8")
+        castor("segredos", "enviar", "vigia", "--maquina", MAQUINA)
+
+
+@entrega
+def test_remover_devolve_a_maquina_ao_estado_anterior(destino):
+    removido = castor("servico", "remover", "vigia", "--maquina", MAQUINA)
+    assert removido.returncode == 0, removido.stderr
+    sobrou = conexao.executar(
+        destino, "ls ~/.config/systemd/user/ 2>/dev/null; ls ~/.config/castor/")
+    assert "vigia.service" not in sobrou.texto
+    assert "vigia.env" not in sobrou.texto
+    print(f"\ndepois de remover: {sorted(sobrou.texto.split())}")
