@@ -83,8 +83,10 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ### Build/Run
 
-- **Testes:** `pytest`
-- **Run (desenvolvimento):** `python -m castor`
+- **Preparo:** `python3.12 -m venv .venv && .venv/bin/pip install pytest`
+- **Testes:** `.venv/bin/pytest`
+- **Run (desenvolvimento):** `python -m castor` a partir de `src/`
+- **Empacotar:** `python scripts/build-pyz.py`
 
 ## Leitura obrigatória antes de spec/plano
 
@@ -107,7 +109,8 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
   e caminho vêm do manifesto. Código com nome de host embutido é defeito, não
   configuração — foi o que travou a reutilização do toolkit de origem.
 - **Stdlib primeiro** (acima), e **zero código nativo**.
-- **Runner de testes canônico:** `pytest` na raiz do repositório.
+- **Runner de testes canônico:** `.venv/bin/pytest` na raiz. O `python3` de
+  sistema do macOS é 3.9 e não serve — o ambiente nasce de um Python 3.12+.
 - Implementação que contradiz `docs/81-referencia/dominio/` ou `GLOSSARIO.md`
   atualiza o doc no mesmo commit.
 
