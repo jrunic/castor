@@ -1,5 +1,7 @@
 import argparse
+import getpass
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -8,6 +10,7 @@ from pathlib import Path
 import castor
 from castor import chaves as mod_chaves
 from castor import conexao as mod_conexao
+from castor import medicao as mod_medicao
 from castor import manifesto as mod_manifesto
 from castor import segredos as mod_segredos
 from castor.manifesto import ErroDeManifesto
@@ -46,6 +49,21 @@ def construir_analisador() -> argparse.ArgumentParser:
     maquina = areas.add_parser("maquina", help="área maquina — as máquinas clientes")
     verbos_maquina = maquina.add_subparsers(dest="verbo", metavar="verbo",
                                             required=True)
+
+    adicionar = verbos_maquina.add_parser(
+        "adicionar", help="mede a máquina e a cadastra no manifesto")
+    adicionar.add_argument("nome")
+    adicionar.add_argument("--endereco", default="")
+    adicionar.add_argument("--usuario", default="")
+    adicionar.add_argument("--principal", action="store_true",
+                           help="cadastra ESTA máquina como principal")
+    adicionar.add_argument("--substituir", action="store_true")
+
+    verbos_maquina.add_parser("listar", help="lista as máquinas do manifesto")
+
+    remover = verbos_maquina.add_parser("remover",
+                                        help="tira a máquina do manifesto")
+    remover.add_argument("nome")
 
     testar = verbos_maquina.add_parser("testar", help="prova a conexão com a cliente")
     testar.add_argument("nome")
@@ -217,7 +235,74 @@ def _destino_de(opcoes, nome: str) -> mod_conexao.Destino:
                                chave=lido.caminho_da_chave())
 
 
+def _medir_aqui() -> mod_medicao.Medicao:
+    return mod_medicao.Medicao(
+        usuario=getpass.getuser(), casa=str(Path.home()),
+        sistema=platform.system().lower(), epoca=int(time.time()),
+        fuso=time.strftime("%z"), python=platform.python_version(), sudo=False,
+    )
+
+
+def _medir_la(destino: mod_conexao.Destino) -> mod_medicao.Medicao:
+    saida = mod_conexao.conferir(
+        mod_conexao.executar(destino, mod_medicao.SONDA), destino)
+    return mod_medicao.interpretar(saida.texto)
+
+
+def _adicionar_maquina(opcoes) -> int:
+    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto))
+    if opcoes.principal:
+        medido = _medir_aqui()
+        endereco = ""
+    else:
+        if not opcoes.endereco:
+            print("uma máquina cliente precisa de --endereco.", file=sys.stderr)
+            return 1
+        endereco = opcoes.endereco
+        destino = mod_conexao.Destino(
+            usuario=opcoes.usuario or getpass.getuser(), endereco=endereco,
+            chave=lido.caminho_da_chave())
+        try:
+            medido = _medir_la(destino)
+        except mod_conexao.FalhaDeConexao as erro:
+            print(str(erro), file=sys.stderr)
+            return CODIGOS.get(type(erro), 5)
+        except mod_medicao.MedicaoIncompleta as erro:
+            print(str(erro), file=sys.stderr)
+            return 7
+
+    for queixa in (mod_medicao.conferir_relogio(medido, agora=time.time()),
+                   mod_medicao.conferir_python(medido)):
+        if queixa:
+            print(f"[castor] {queixa}", file=sys.stderr)
+
+    maquina = mod_manifesto.Maquina(
+        nome=opcoes.nome, usuario=medido.usuario, casa=medido.casa,
+        sistema=medido.sistema, endereco=endereco, python=medido.python,
+        papel="principal" if opcoes.principal else "cliente")
+    mod_manifesto.gravar(
+        mod_manifesto.acrescentar(lido, maquina, substituir=opcoes.substituir))
+    print(f"cadastrada: {maquina.nome} ({maquina.papel}, {maquina.sistema}, "
+          f"casa {maquina.casa})")
+    return 0
+
+
 def _despachar_maquina(opcoes) -> int:
+    if opcoes.verbo == "adicionar":
+        return _adicionar_maquina(opcoes)
+    if opcoes.verbo == "listar":
+        lido = mod_manifesto.ler(Path(opcoes.manifesto))
+        for nome in lido.nomes():
+            declarada = lido.maquina(nome)
+            print(f"{nome}\t{declarada.papel}\t{declarada.endereco or '-'}"
+                  f"\t{declarada.usuario}\t{declarada.sistema}")
+        return 0
+    if opcoes.verbo == "remover":
+        lido = mod_manifesto.ler(Path(opcoes.manifesto))
+        mod_manifesto.gravar(mod_manifesto.retirar(lido, opcoes.nome))
+        print(f"retirada do manifesto: {opcoes.nome}. Isto não desfaz nada na "
+              f"máquina — chave, usuário e serviços continuam lá.")
+        return 0
     if opcoes.verbo == "testar":
         destino = _destino_de(opcoes, opcoes.nome)
         try:
