@@ -85,3 +85,60 @@ def test_castor_ausente_e_reconhecido_pelo_que_a_maquina_responde(destino):
         return
     print(f"\ncastor já instalado nesta bancada: {versao}")
     assert versao
+
+
+COFRE = os.environ.get("CASTOR_COFRE_DE_TESTE")
+MANIFESTO = os.environ.get("CASTOR_MANIFESTO_DE_TESTE")
+MAQUINA = os.environ.get("CASTOR_MAQUINA_DE_TESTE")
+
+entrega = pytest.mark.skipif(
+    not (ALVO and COFRE and MANIFESTO and MAQUINA),
+    reason="CASTOR_COFRE_DE_TESTE, _MANIFESTO_DE_TESTE e _MAQUINA_DE_TESTE "
+           "não definidos")
+
+
+def castor(*argumentos):
+    import subprocess
+    import sys
+    return subprocess.run(
+        [sys.executable, "-m", "castor", "--manifesto", MANIFESTO, *argumentos],
+        capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": "src"})
+
+
+@entrega
+def test_entrega_ponta_a_ponta_contra_maquina_real():
+    enviado = castor("segredos", "enviar", "correio", "--maquina", MAQUINA)
+    assert enviado.returncode == 0, enviado.stderr
+    print(f"\nenviado: {enviado.stdout.strip()}")
+
+    em_dia = castor("segredos", "estado")
+    assert em_dia.returncode == 0, em_dia.stdout + em_dia.stderr
+    assert "em dia" in em_dia.stdout
+    print(f"estado: {em_dia.stdout.strip()}")
+
+    original = Path(COFRE).read_text(encoding="utf-8")
+    try:
+        Path(COFRE).write_text(
+            original.replace("abacaxi-de-mentira", "outra-de-mentira"),
+            encoding="utf-8")
+        depois = castor("segredos", "estado")
+        assert depois.returncode == 8, depois.stdout
+        assert "desatualizado" in depois.stdout
+        print(f"depois de mexer no cofre: {depois.stdout.strip()}")
+    finally:
+        Path(COFRE).write_text(original, encoding="utf-8")
+
+
+@entrega
+def test_o_cofre_nao_esta_na_cliente(destino):
+    saida = conexao.executar(destino, "ls ~/.config/castor/")
+    assert "cofre" not in saida.texto
+    print(f"\nna cliente: {sorted(saida.texto.split())}")
+
+
+@entrega
+def test_o_segredo_chegou_com_permissao_restrita(destino):
+    saida = conexao.executar(destino, "stat -c %a ~/.config/castor/correio.env")
+    assert saida.texto.strip() == "600", saida.texto
+    print(f"\npermissão do arquivo do serviço: {saida.texto.strip()}")

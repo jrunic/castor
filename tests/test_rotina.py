@@ -124,3 +124,45 @@ def test_falha_depois_da_janela_avisa_de_novo(tmp_path):
     rodar("backup", ["sh", "-c", "exit 1"], agora=1_000_000 + 3601, **comum)
 
     assert len(remetente.enviadas) == 2
+
+
+class RemetenteQueCai:
+    """O servidor de e-mail fora do ar, que é o caso comum quando algo falha."""
+
+    def __init__(self):
+        self.tentou = False
+
+    def enviar(self, mensagem):
+        self.tentou = True
+        raise OSError("[Errno 8] nodename nor servname provided")
+
+
+def test_correio_fora_do_ar_nao_engole_o_codigo_da_rotina(tmp_path):
+    """A rotina falhou com 2; o aviso falhar não pode virar rastreamento.
+
+    Quem chama é o cron. Rastreamento no lugar do código de saída faz a falha
+    da rotina virar falha do castor, e o diagnóstico vai para o lugar errado.
+    """
+    remetente = RemetenteQueCai()
+    supressor = Supressor(tmp_path / "avisos.json", janela_em_minutos=60)
+
+    resultado = rodar(
+        "limpeza", ["sh", "-c", "echo falhei >&2; exit 2"],
+        registro=tmp_path / "registro.log", trava=tmp_path / "trava",
+        remetente=remetente, supressor=supressor, de="a@t.test", para="b@t.test",
+        maquina="represa", agora=1000.0)
+
+    assert remetente.tentou
+    assert resultado.codigo == 2
+
+
+def test_falha_no_envio_nao_marca_o_alarme_como_avisado(tmp_path):
+    """Senão o primeiro aviso que der certo seria suprimido pelo que falhou."""
+    supressor = Supressor(tmp_path / "avisos.json", janela_em_minutos=60)
+
+    rodar("limpeza", ["sh", "-c", "exit 2"],
+                 registro=tmp_path / "registro.log", trava=tmp_path / "trava",
+                 remetente=RemetenteQueCai(), supressor=supressor,
+                 de="a@t.test", para="b@t.test", maquina="represa", agora=1000.0)
+
+    assert supressor.pode_avisar("rotina.limpeza.falhou", agora=1001.0)

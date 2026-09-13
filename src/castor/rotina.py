@@ -1,5 +1,6 @@
 import fcntl
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,7 +39,15 @@ def _avisar_se_preciso(resultado, remetente, supressor, de, para, maquina, agora
         Aviso(alarme=alarme, maquina=maquina, assunto_extra=extra, corpo=resultado.saida),
         de=de, para=para,
     )
-    remetente.enviar(mensagem)
+    try:
+        remetente.enviar(mensagem)
+    except Exception as erro:
+        # O servidor de e-mail fora do ar é o caso comum quando algo falha. Se
+        # isto subisse, o cron receberia rastreamento no lugar do código da
+        # rotina, e o diagnóstico iria para o castor em vez de ir para o job.
+        print(f"[castor] a rotina falhou E o aviso não saiu: {erro}",
+              file=sys.stderr)
+        return
     # Só registra depois de enviar: falha no envio não deve suprimir o próximo.
     supressor.registrar(alarme, agora=agora)
 
