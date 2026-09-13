@@ -7,7 +7,16 @@ chaves declaradas para ele, e o cofre nunca sai da principal.
 
 Nenhum comando escreve aqui. O cofre é editado por quem é dono dele.
 """
+import re
 from pathlib import Path
+
+# \b impede que $HOME case dentro de $HOME_PRINCIPAL ou de $HOMEX: nos dois
+# casos vem caractere de palavra depois de HOME, e aí não há limite. A ordem das
+# substituições é a segunda guarda, para o caso de alguém mexer no padrão.
+MARCAS = (
+    ("casa_principal", re.compile(r"\$HOME_PRINCIPAL\b")),
+    ("casa", re.compile(r"\$HOME\b")),
+)
 
 
 class ErroDeCofre(Exception):
@@ -23,6 +32,10 @@ class CofreFrouxo(ErroDeCofre):
 
 
 class ChaveAusenteNoCofre(ErroDeCofre):
+    pass
+
+
+class ValorHostil(ErroDeCofre):
     pass
 
 
@@ -58,3 +71,23 @@ def filtrar(valores: dict[str, str], chaves: list[str], *,
             f"Acrescente a linha e rode de novo."
         )
     return {chave: valores[chave] for chave in chaves}
+
+
+def resolver(valor: str, *, casa: str, casa_principal: str) -> str:
+    """Resolve as duas marcas e recusa tudo o que sobrar.
+
+    O arquivo gerado é lido por dois consumidores com regras diferentes: o shell
+    expande cifrão, o systemd o lê literal. Valor que os faria divergir não sai
+    daqui.
+    """
+    resolvido = valor
+    valores = {"casa": casa, "casa_principal": casa_principal}
+    for nome, padrao in MARCAS:
+        resolvido = padrao.sub(valores[nome], resolvido)
+    if "$" in resolvido or "`" in resolvido:
+        raise ValorHostil(
+            f"{valor!r} tem cifrão ou crase que não é marca conhecida. O shell "
+            f"expandiria e o systemd leria literal — os dois consumidores "
+            f"divergiriam. Só $HOME e $HOME_PRINCIPAL são resolvidos, e sem chaves."
+        )
+    return resolvido
