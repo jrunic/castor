@@ -77,9 +77,11 @@ def executar(passos: list[Passo], contexto: dict, relatar=print) -> list[str]:
 SUDOERS = "/etc/sudoers.d/castor"
 INSTALADOR = ("https://raw.githubusercontent.com/jrunic/castor/main/"
               "scripts/instalar.sh")
+ESPERA_DA_REDE = "20s"
 
 
-def gravar_linha(conteudo: str, arquivo: str, *, acrescentar: bool = False) -> str:
+def gravar_linha(conteudo: str, arquivo: str, *, acrescentar: bool = False,
+                 uma_vez: bool = False) -> str:
     """Fragmento de shell que grava uma linha inteira, com quebra no fim.
 
     O fragmento atravessa o ssh e ainda um `sh -c "..."` do outro lado. Por isso
@@ -88,7 +90,11 @@ def gravar_linha(conteudo: str, arquivo: str, *, acrescentar: bool = False) -> s
     inválido nasceu na bancada de 13/09/2026.
     """
     seta = ">>" if acrescentar else ">"
-    return f"printf '%s\\n' '{conteudo}' {seta} {arquivo}"
+    escrita = f"printf '%s\\n' '{conteudo}' {seta} {arquivo}"
+    if not uma_vez:
+        return escrita
+    # Re-rodar o preparar não pode fazer o arquivo crescer sem fim.
+    return f"grep -qxF '{conteudo}' {arquivo} 2>/dev/null || {escrita}"
 
 
 def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
@@ -135,7 +141,7 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
     def abrir_acesso_inicial(_):
         """Única conexão por senha do roteiro — quando há senha a digitar."""
         gravar = gravar_linha(chave_publica, "~/.ssh/authorized_keys",
-                              acrescentar=True)
+                              acrescentar=True, uma_vez=True)
         correr(inicial,
                f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && {gravar} && "
                f"chmod 600 ~/.ssh/authorized_keys",
@@ -169,7 +175,7 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
             f"useradd --create-home --shell /bin/bash {usuario_de_servico}; "
             f"install -d -m 700 -o {usuario_de_servico} -g {usuario_de_servico} "
             f"{casa}/.ssh; "
-            f"{gravar_linha(chave_publica, autorizadas, acrescentar=True)}; "
+            f"{gravar_linha(chave_publica, autorizadas, acrescentar=True, uma_vez=True)}; "
             f"chown {usuario_de_servico}: {autorizadas}; "
             f"chmod 600 {autorizadas}; "
             f"{gravar_linha(linha, SUDOERS)}; "
@@ -207,10 +213,27 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
         return None
 
     def subir_rede(_):
-        """Depois do sudo sem senha, dá para capturar a saída — e a URL."""
-        saida = correr(servico, f"sudo {' '.join(mod_rede.montar_subida(nome))}")
+        """Instala o tailscale se faltar, sobe, e captura o endereço de login.
+
+        O limite de tempo não é detalhe: 'tailscale up' espera até alguém
+        autorizar no navegador, e sem ele o roteiro ficaria pendurado para
+        sempre. O que interessa desta chamada é o endereço que ela imprime.
+        """
+        correr(servico, "command -v tailscale >/dev/null 2>&1 || "
+                        "curl -fsSL https://tailscale.com/install.sh | sudo sh")
+        subida = " ".join(mod_rede.montar_subida(nome))
+        saida = correr(servico, f"sudo {subida} --timeout={ESPERA_DA_REDE}")
         contexto["url_de_login"] = mod_rede.extrair_url_de_login(
             saida.texto + saida.erro)
+
+    def conferir_rede(_):
+        if contexto.get("url_de_login"):
+            return None  # o clique vem depois, e é conferido na expiração
+        estado = correr(servico, "tailscale status --json").texto
+        if mod_rede.esta_rodando(estado):
+            return None
+        return ("a máquina não entrou na rede privada e não imprimiu endereço "
+                "de login. O tailscale chegou a instalar?")
 
     return [
         Passo("acesso_inicial", fazer=abrir_acesso_inicial,
@@ -228,7 +251,8 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
         Passo("sudo", exige=("provar_chave",), conferir=conferir_sudo),
         Passo("instalar_castor", fazer=instalar_castor, exige=("provar_chave",),
               conferir=conferir_castor),
-        Passo("rede", fazer=subir_rede, exige=("provar_chave", "sudo")),
+        Passo("rede", fazer=subir_rede, conferir=conferir_rede,
+              exige=("provar_chave", "sudo")),
         Passo("expiracao",
               pendente="conduzida pelo comando, fora do roteiro automático — "
                        "desativar exige o painel, e o castor confere depois"),

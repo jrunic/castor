@@ -72,3 +72,17 @@ def test_o_no_tambem_e_achado_pelo_nome_de_rede():
 def test_online_e_lido_da_entrada_de_peer():
     assert rede.esta_online(STATUS, "represa") is True
     assert rede.esta_online(STATUS, "moinho") is False
+
+
+def test_backend_rodando_e_lido_do_estado_da_propria_maquina():
+    assert rede.esta_rodando(STATUS) is True
+
+
+def test_backend_desligado_nao_passa_por_rodando():
+    parado = json.dumps({"BackendState": "NeedsLogin", "Self": {}, "Peer": {}})
+    assert rede.esta_rodando(parado) is False
+
+
+def test_estado_ilegivel_nao_vira_rodando():
+    assert rede.esta_rodando("") is False
+    assert rede.esta_rodando("isto não é json") is False

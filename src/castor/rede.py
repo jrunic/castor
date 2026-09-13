@@ -55,3 +55,15 @@ def expiracao_de(texto_json: str, nome_na_rede: str) -> str | None:
 
 def esta_online(texto_json: str, nome_na_rede: str) -> bool:
     return bool(_peer(texto_json, nome_na_rede).get("Online"))
+
+
+def esta_rodando(texto_json: str) -> bool:
+    """A própria máquina está conectada à rede privada?
+
+    Diferente de expiracao_de e esta_online, que leem a entrada de peer: aqui é
+    o estado do serviço local, e é o que a cliente consegue responder sobre si.
+    """
+    try:
+        return json.loads(texto_json).get("BackendState") == "Running"
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return False

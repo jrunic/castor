@@ -289,3 +289,56 @@ def test_a_prova_do_acesso_inicial_usa_a_chave_do_castor_e_nao_a_da_nuvem():
         chave_inicial="/tmp/chave-da-nuvem", executor=executor)}
     roteiro["acesso_inicial"].conferir({})
     assert executor.destinos[-1].chave == Path("/tmp/chave-do-castor")
+
+
+def test_a_rede_instala_o_tailscale_antes_de_subir():
+    """A VPS de bancada não tinha tailscale — e o roteiro nunca o instalava."""
+    executor = ConexaoDeMentira()
+    contexto = {}
+    roteiro = {p.nome: p for p in _roteiro(executor, contexto)}
+    roteiro["rede"].fazer(contexto)
+    comandos = " | ".join(c[1] for c in executor.chamadas)
+    assert "command -v tailscale" in comandos
+    assert "install.sh" in comandos
+    assert "tailscale up" in comandos
+
+
+def test_a_subida_da_rede_nao_espera_para_sempre():
+    """tailscale up sem limite pendura o roteiro até alguém clicar."""
+    executor = ConexaoDeMentira()
+    contexto = {}
+    roteiro = {p.nome: p for p in _roteiro(executor, contexto)}
+    roteiro["rede"].fazer(contexto)
+    subida = [c[1] for c in executor.chamadas if "tailscale up" in c[1]][0]
+    assert "--timeout" in subida
+
+
+def test_rede_sem_url_e_sem_conexao_e_queixa_em_vez_de_silencio():
+    executor = ConexaoDeMentira()
+    contexto = {}
+    roteiro = {p.nome: p for p in _roteiro(executor, contexto)}
+    roteiro["rede"].fazer(contexto)
+    queixa = roteiro["rede"].conferir(contexto)
+    assert queixa is not None
+    assert "rede privada" in queixa
+
+
+def test_maquina_ja_conectada_passa_sem_url():
+    import json as _json
+    estado = _json.dumps({"BackendState": "Running", "Self": {}, "Peer": {}})
+    executor = ConexaoDeMentira({"tailscale status --json": estado})
+    contexto = {}
+    roteiro = {p.nome: p for p in _roteiro(executor, contexto)}
+    roteiro["rede"].fazer(contexto)
+    assert roteiro["rede"].conferir(contexto) is None
+
+
+def test_a_chave_nao_e_acrescentada_duas_vezes(tmp_path):
+    """Re-rodar o preparar não pode fazer o authorized_keys crescer sem fim."""
+    import subprocess
+    alvo = tmp_path / "authorized_keys"
+    fragmento = preparar.gravar_linha("ssh-ed25519 NOVA castor", str(alvo),
+                                      acrescentar=True, uma_vez=True)
+    for _ in range(3):
+        subprocess.run(["sh", "-c", f'sh -c "{fragmento}"'], check=True)
+    assert alvo.read_text(encoding="utf-8").count("ssh-ed25519 NOVA castor") == 1
