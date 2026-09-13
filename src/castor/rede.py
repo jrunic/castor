@@ -1,0 +1,57 @@
+"""A rede privada, pelo CLI do tailscale.
+
+Sem credencial de API e sem cliente OAuth: a conexão de uma máquina nova sai por
+uma URL de login que o comando imprime e que o usuário abre no navegador da
+máquina principal, onde já está autenticado.
+
+Medição de 13/09/2026, e ela manda no desenho deste módulo: o bloco 'Self' do
+'tailscale status --json' NÃO traz o campo KeyExpiry, nem quando a expiração
+está ativa — o 'debug netmap' também não. A expiração de uma máquina só é
+legível na entrada de PEER que as outras máquinas enxergam. Por isso a
+conferência roda na principal, olhando a cliente, e nunca na própria máquina.
+"""
+import json
+import re
+
+URL_DE_LOGIN = re.compile(r"https://login\.tailscale\.com/\S+")
+
+
+class ErroDeRede(Exception):
+    """Base dos erros desta área."""
+
+
+class NoDesconhecido(ErroDeRede):
+    pass
+
+
+def montar_subida(nome_na_rede: str) -> list[str]:
+    return ["tailscale", "up", "--hostname", nome_na_rede]
+
+
+def extrair_url_de_login(texto: str) -> str | None:
+    achado = URL_DE_LOGIN.search(texto)
+    return achado.group(0) if achado else None
+
+
+def _peer(texto_json: str, nome_na_rede: str) -> dict:
+    dados = json.loads(texto_json)
+    procurado = nome_na_rede.rstrip(".")
+    for par in (dados.get("Peer") or {}).values():
+        rede = (par.get("DNSName") or "").rstrip(".")
+        nomes = {par.get("HostName", ""), rede, rede.split(".")[0]}
+        if procurado in nomes:
+            return par
+    raise NoDesconhecido(
+        f"o nó '{nome_na_rede}' não aparece na rede privada desta máquina. "
+        f"Se ele é a própria máquina, a leitura está errada: um nó não enxerga "
+        f"a própria expiração. Rode a conferência a partir da principal."
+    )
+
+
+def expiracao_de(texto_json: str, nome_na_rede: str) -> str | None:
+    """Devolve a data de expiração da chave de nó, ou None se está desativada."""
+    return _peer(texto_json, nome_na_rede).get("KeyExpiry") or None
+
+
+def esta_online(texto_json: str, nome_na_rede: str) -> bool:
+    return bool(_peer(texto_json, nome_na_rede).get("Online"))
