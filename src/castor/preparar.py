@@ -10,6 +10,7 @@ máquina do usuário:
 """
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 from castor import conexao as mod_conexao
@@ -78,9 +79,22 @@ INSTALADOR = ("https://raw.githubusercontent.com/jrunic/castor/main/"
               "scripts/instalar.sh")
 
 
+def gravar_linha(conteudo: str, arquivo: str, *, acrescentar: bool = False) -> str:
+    """Fragmento de shell que grava uma linha inteira, com quebra no fim.
+
+    O fragmento atravessa o ssh e ainda um `sh -c "..."` do outro lado. Por isso
+    o formato do printf vai entre aspas SIMPLES: entre duplas, o shell de dentro
+    come a barra invertida e o \n vira a letra n — que foi como um sudoers
+    inválido nasceu na bancada de 13/09/2026.
+    """
+    seta = ">>" if acrescentar else ">"
+    return f"printf '%s\\n' '{conteudo}' {seta} {arquivo}"
+
+
 def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
                    usuario_de_servico: str, chave_publica: str,
-                   contexto: dict, executor=None, agora=time.time) -> list[Passo]:
+                   contexto: dict, chave_inicial=None, executor=None,
+                   agora=time.time) -> list[Passo]:
     """Os passos, em ordem, do primeiro acesso à máquina pronta.
 
     O contexto carrega o que um passo mediu para o seguinte usar. O 'executor'
@@ -91,14 +105,21 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
 
     1. No primeiro acesso não há chave, há senha — o passo zero instala a chave
        numa conexão que repassa o terminal. Dali em diante tudo é por chave, e
-       aí a saída pode ser capturada e interpretada.
+       aí a saída pode ser capturada e interpretada. **Em nuvem é o contrário**:
+       a imagem nasce com uma chave e sem senha nenhuma, e aí 'chave_inicial'
+       diz qual é, o primeiro acesso roda em lote e ninguém digita nada.
     2. sudo sem terminal falha em máquina recém-instalada. Os passos que usam
        sudo pelo usuário inicial vão com terminal repassado, e por isso são um
        só: um pedido de senha, não três. Depois que o sudoers do usuário de
        serviço está de pé e provado, sudo volta a rodar em lote — é por isso que
        o passo de rede EXIGE o de sudo, sem o qual não daria para capturar a URL.
     """
-    inicial = mod_conexao.Destino(usuario=usuario_inicial, endereco=endereco)
+    por_senha = chave_inicial is None
+    inicial = mod_conexao.Destino(usuario=usuario_inicial, endereco=endereco,
+                                  chave=None if por_senha else Path(chave_inicial))
+    # Sempre a chave do castor: é ela que a conferência existe para provar.
+    # Conferir com a chave que já funcionava passaria sempre, inclusive quando a
+    # instalação da chave nova falhou.
     inicial_com_chave = mod_conexao.Destino(usuario=usuario_inicial,
                                             endereco=endereco,
                                             chave=contexto.get("chave"))
@@ -112,12 +133,13 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
     correr = executor or correr_de_verdade
 
     def abrir_acesso_inicial(_):
-        """Única conexão por senha do roteiro inteiro."""
+        """Única conexão por senha do roteiro — quando há senha a digitar."""
+        gravar = gravar_linha(chave_publica, "~/.ssh/authorized_keys",
+                              acrescentar=True)
         correr(inicial,
-               f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && "
-               f'printf "%s\\n" "{chave_publica}" >> ~/.ssh/authorized_keys && '
+               f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && {gravar} && "
                f"chmod 600 ~/.ssh/authorized_keys",
-               com_senha=True)
+               com_senha=por_senha)
 
     def conferir_acesso_inicial(_):
         resposta = correr(inicial_com_chave, "id -un").texto.strip()
@@ -132,19 +154,25 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
             correr(inicial_com_chave, mod_medicao.SONDA).texto)
 
     def criar_usuario_de_servico(_):
-        """Um sudo só, com terminal: um pedido de senha, e não três."""
+        """Um sudo só, e sempre com terminal.
+
+        O sudo pode pedir senha mesmo quando o acesso foi por chave — é
+        configuração da máquina, não do acesso. Terminal repassado cobre os dois
+        casos: onde não pede, nada aparece; onde pede, aparece para quem digita.
+        """
         linha = f"{usuario_de_servico} ALL=(ALL) NOPASSWD: ALL"
         casa = f"/home/{usuario_de_servico}"
+        autorizadas = f"{casa}/.ssh/authorized_keys"
         correr(inicial, (
             f"sudo sh -c "
             f'"id -u {usuario_de_servico} >/dev/null 2>&1 || '
             f"useradd --create-home --shell /bin/bash {usuario_de_servico}; "
             f"install -d -m 700 -o {usuario_de_servico} -g {usuario_de_servico} "
             f"{casa}/.ssh; "
-            f"printf %s\\\\n '{chave_publica}' >> {casa}/.ssh/authorized_keys; "
-            f"chown {usuario_de_servico}: {casa}/.ssh/authorized_keys; "
-            f"chmod 600 {casa}/.ssh/authorized_keys; "
-            f"printf %s\\\\n '{linha}' > {SUDOERS}; "
+            f"{gravar_linha(chave_publica, autorizadas, acrescentar=True)}; "
+            f"chown {usuario_de_servico}: {autorizadas}; "
+            f"chmod 600 {autorizadas}; "
+            f"{gravar_linha(linha, SUDOERS)}; "
             f"chmod 440 {SUDOERS}; "
             f'visudo -c -f {SUDOERS}"'), com_terminal=True)
 
@@ -174,7 +202,7 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
         correr(servico, f"curl -fsSL {INSTALADOR} | sh")
 
     def conferir_castor(_):
-        if correr(servico, "castor --versao").codigo != 0:
+        if correr(servico, mod_conexao.comando_remoto("--versao")).codigo != 0:
             return "o castor não respondeu depois da instalação."
         return None
 

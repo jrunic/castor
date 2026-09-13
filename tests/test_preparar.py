@@ -75,6 +75,8 @@ def test_conferencia_sem_queixa_deixa_o_passo_provado():
     assert preparar.executar(passos, contexto={}, relatar=lambda t: None) == ["chave"]
 
 
+from pathlib import Path  # noqa: E402
+
 from castor import conexao  # noqa: E402
 
 RESPOSTA_MEDIDA = (
@@ -89,9 +91,11 @@ class ConexaoDeMentira:
     def __init__(self, respostas=None):
         self.respostas = respostas or {}
         self.chamadas = []
+        self.destinos = []
 
     def __call__(self, destino, comando, **opcoes):
         self.chamadas.append((destino.usuario, comando, opcoes))
+        self.destinos.append(destino)
         for gatilho, resposta in self.respostas.items():
             if gatilho in comando:
                 return conexao.Saida(codigo=0, texto=resposta, erro="")
@@ -199,3 +203,89 @@ def test_o_roteiro_inteiro_roda_e_nao_chega_a_fechar_o_acesso_inicial():
                         "instalar_castor", "rede"]
     assert "encerrar_acesso_inicial" not in provados
     assert contexto["url_de_login"].endswith("9z8y")
+
+
+def test_com_chave_inicial_o_primeiro_acesso_vai_por_chave_e_em_lote():
+    """Em nuvem não há senha: a imagem nasce com uma chave e sem senha nenhuma.
+
+    Medido em 13/09/2026 numa VPS Ubuntu da AWS — o caminho por senha deste
+    roteiro não funcionaria ali, porque não existe senha a digitar.
+    """
+    executor = ConexaoDeMentira()
+    roteiro = {p.nome: p for p in preparar.montar_roteiro(
+        nome="represa", endereco="represa.exemplo.test",
+        usuario_inicial="ubuntu", usuario_de_servico="castor",
+        chave_publica="ssh-ed25519 AAAA... ana", contexto={},
+        chave_inicial="/tmp/chave-da-nuvem", executor=executor)}
+    roteiro["acesso_inicial"].fazer({})
+    _, _, opcoes = executor.chamadas[0]
+    assert not opcoes.get("com_senha")
+    assert not opcoes.get("com_terminal")
+
+
+def test_a_chave_inicial_acompanha_os_comandos_do_usuario_inicial():
+    executor = ConexaoDeMentira()
+    roteiro = {p.nome: p for p in preparar.montar_roteiro(
+        nome="represa", endereco="represa.exemplo.test",
+        usuario_inicial="ubuntu", usuario_de_servico="castor",
+        chave_publica="ssh-ed25519 AAAA... ana", contexto={},
+        chave_inicial="/tmp/chave-da-nuvem", executor=executor)}
+    roteiro["acesso_inicial"].fazer({})
+    roteiro["acesso_inicial"].conferir({})
+    for destino, _, _ in executor.chamadas:
+        assert destino == "ubuntu"
+    # o destino carrega a chave da nuvem, e não a do castor
+    assert executor.destinos[0].chave == Path("/tmp/chave-da-nuvem")
+
+
+def test_sem_chave_inicial_o_primeiro_acesso_continua_por_senha():
+    executor = ConexaoDeMentira()
+    roteiro = {p.nome: p for p in _roteiro(executor)}
+    roteiro["acesso_inicial"].fazer({})
+    assert executor.chamadas[0][2].get("com_senha") is True
+
+
+def test_gravar_linha_sobrevive_ao_aninhamento_de_aspas(tmp_path):
+    """O fragmento atravessa sh -c "..." e tem de produzir a linha inteira.
+
+    Medido em 13/09/2026 contra a VPS de bancada: a versão anterior escrevia
+    'castor ALL=(ALL) NOPASSWD: ALLn' — o \\n virou a letra n, e o sudoers
+    resultante era inválido. Aqui o shell roda de verdade, com o mesmo
+    aninhamento de aspas do roteiro.
+    """
+    import subprocess
+    alvo = tmp_path / "arquivo"
+    fragmento = preparar.gravar_linha("castor ALL=(ALL) NOPASSWD: ALL", str(alvo))
+    concluido = subprocess.run(["sh", "-c", f'sh -c "{fragmento}"'],
+                               capture_output=True, text=True)
+    assert concluido.returncode == 0, concluido.stderr
+    assert alvo.read_text(encoding="utf-8") == "castor ALL=(ALL) NOPASSWD: ALL\n"
+
+
+def test_gravar_linha_acrescenta_sem_apagar_o_que_estava(tmp_path):
+    import subprocess
+    alvo = tmp_path / "authorized_keys"
+    alvo.write_text("ssh-rsa CHAVE-QUE-JA-ESTAVA\n", encoding="utf-8")
+    fragmento = preparar.gravar_linha("ssh-ed25519 NOVA castor", str(alvo),
+                                      acrescentar=True)
+    subprocess.run(["sh", "-c", f'sh -c "{fragmento}"'], check=True)
+    linhas = alvo.read_text(encoding="utf-8").splitlines()
+    assert linhas == ["ssh-rsa CHAVE-QUE-JA-ESTAVA", "ssh-ed25519 NOVA castor"]
+
+
+def test_a_prova_do_acesso_inicial_usa_a_chave_do_castor_e_nao_a_da_nuvem():
+    """Com --chave-inicial, conferir pela chave da nuvem não prova nada.
+
+    A conferência existe para provar que a chave NOVA entrou. Se ela conectar
+    com a chave que já funcionava, passa sempre — inclusive quando a instalação
+    da chave nova falhou.
+    """
+    executor = ConexaoDeMentira()
+    roteiro = {p.nome: p for p in preparar.montar_roteiro(
+        nome="represa", endereco="represa.exemplo.test",
+        usuario_inicial="ubuntu", usuario_de_servico="castor",
+        chave_publica="ssh-ed25519 AAAA... ana",
+        contexto={"chave": Path("/tmp/chave-do-castor")},
+        chave_inicial="/tmp/chave-da-nuvem", executor=executor)}
+    roteiro["acesso_inicial"].conferir({})
+    assert executor.destinos[-1].chave == Path("/tmp/chave-do-castor")

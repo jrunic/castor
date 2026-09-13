@@ -75,6 +75,10 @@ def construir_analisador() -> argparse.ArgumentParser:
     preparar_maquina.add_argument("--usuario-inicial", required=True,
                                   help="o usuário criado na instalação do sistema")
     preparar_maquina.add_argument("--usuario-de-servico", default="castor")
+    preparar_maquina.add_argument(
+        "--chave-inicial", default=None,
+        help="chave que já dá acesso ao usuário inicial — em nuvem, a que a "
+             "imagem trouxe. Sem ela, o primeiro acesso é por senha.")
 
     testar = verbos_maquina.add_parser("testar", help="prova a conexão com a cliente")
     testar.add_argument("nome")
@@ -361,7 +365,8 @@ def _preparar_maquina(opcoes) -> int:
         nome=opcoes.nome, endereco=opcoes.endereco,
         usuario_inicial=opcoes.usuario_inicial,
         usuario_de_servico=opcoes.usuario_de_servico,
-        chave_publica=mod_chaves.mostrar(caminho_da_chave), contexto=contexto)
+        chave_publica=mod_chaves.mostrar(caminho_da_chave), contexto=contexto,
+        chave_inicial=opcoes.chave_inicial)
     try:
         mod_preparar.executar(roteiro, contexto)
     except mod_conexao.FalhaDeConexao as erro:

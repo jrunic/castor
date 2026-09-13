@@ -266,3 +266,33 @@ def test_roteiro_que_para_devolve_codigo_de_preparo(tmp_path, capsys, monkeypatc
                       "represa", "--endereco", "represa.exemplo.test",
                       "--usuario-inicial", "ubuntu"]) == 7
     assert "o sudo não pegou" in capsys.readouterr().err
+
+
+def test_preparar_repassa_a_chave_inicial_ao_roteiro(tmp_path, monkeypatch):
+    """Em nuvem não há senha — o primeiro acesso usa a chave que a imagem trouxe."""
+    from castor import preparar as mod_preparar
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch)
+    recebido = {}
+    monkeypatch.setattr(mod_preparar, "montar_roteiro",
+                        lambda **k: recebido.update(k) or [])
+
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu",
+                      "--chave-inicial", "/tmp/chave-da-nuvem"]) == 0
+    assert recebido["chave_inicial"] == "/tmp/chave-da-nuvem"
+
+
+def test_sem_chave_inicial_o_roteiro_nao_recebe_nenhuma(tmp_path, monkeypatch):
+    from castor import preparar as mod_preparar
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch)
+    recebido = {}
+    monkeypatch.setattr(mod_preparar, "montar_roteiro",
+                        lambda **k: recebido.update(k) or [])
+
+    assert principal(["--manifesto", str(caminho), "maquina", "preparar",
+                      "represa", "--endereco", "represa.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    assert recebido["chave_inicial"] is None
