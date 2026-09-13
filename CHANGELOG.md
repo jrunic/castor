@@ -11,7 +11,15 @@ tags: [changelog]
 
 # Histórico de versões
 
-## Não publicado
+## 0.2.0 — 13/09/2026
+
+A máquina cliente passa a ser operada de ponta a ponta a partir da principal:
+segredo entregue, serviço de pé, saúde vigiada e tudo em dia.
+
+**Mudança de comportamento:** o caminho padrão do manifesto passou de
+`./castor.json`, relativo ao diretório de onde se chama, para
+`~/.config/castor/castor.json`. O cron da máquina cliente não tem diretório de
+trabalho que alguém controle. `CASTOR_MANIFESTO` continua mandando.
 
 - **A área `atualizacao`**: `rodar` e `estado`. Quatro tipos de alvo —
   `castor`, `pipx`, `npm` e `comando` — declarados no manifesto e atualizados a
@@ -56,11 +64,6 @@ tags: [changelog]
   serviço.
 - **`servico reiniciar` é o que leva um segredo trocado ao processo** que o
   consome. Sem ele, entregar arquivo novo não mudava nada em memória.
-
-**Mudança de comportamento:** o caminho padrão do manifesto passou de
-`./castor.json`, relativo ao diretório de onde se chama, para
-`~/.config/castor/castor.json`. O cron da máquina cliente não tem diretório de
-trabalho que alguém controle. `CASTOR_MANIFESTO` continua mandando.
 
 - **A área `segredos` passa a trabalhar com um cofre.** Um arquivo de
   `CHAVE=valor` na máquina principal, que você edita; o manifesto diz quais
