@@ -16,6 +16,7 @@ from castor import conexao as mod_conexao
 from castor import medicao as mod_medicao
 from castor import preparar as mod_preparar
 from castor import rede as mod_rede
+from castor import ronda as mod_ronda
 from castor import manifesto as mod_manifesto
 from castor import segredos as mod_segredos
 from castor import unidade as mod_unidade
@@ -152,8 +153,20 @@ def construir_analisador() -> argparse.ArgumentParser:
     registro.add_argument("--maquina", required=True)
     registro.add_argument("--linhas", type=int, default=50)
 
+    ronda = areas.add_parser("ronda",
+                             help="área ronda — o que você declara vigiar")
+    verbos_ronda = ronda.add_subparsers(dest="verbo", metavar="verbo",
+                                        required=True)
+    rodar_ronda = verbos_ronda.add_parser(
+        "rodar", help="roda as checagens declaradas e avisa o que piorou")
+    rodar_ronda.add_argument("--seco", action="store_true",
+                             help="roda tudo e não avisa ninguém")
+    verbos_ronda.add_parser(
+        "estado", help="mostra o resultado da última ronda, sem reexecutar")
+
     for nome in AREAS:
-        if nome not in ("chave", "maquina", "segredos", "rotina", "servico"):
+        if nome not in ("chave", "maquina", "segredos", "rotina", "servico",
+                        "ronda"):
             areas.add_parser(nome, help=f"área {nome}")
     return analisador
 
@@ -495,6 +508,188 @@ def _despachar_servico(opcoes) -> int:
     return _estado_dos_servicos(opcoes)
 
 
+CODIGO_DE_RONDA = 10
+
+
+def _aviso_da_principal(opcoes, raiz):
+    """O remetente da ronda, com a senha vinda do COFRE.
+
+    Na cliente, a senha sai do arquivo de serviço que o castor entregou. Aqui na
+    principal esse arquivo não existe — o que existe é o cofre, que é de onde
+    aquele arquivo teria saído.
+    """
+    from castor.correio import RemetenteSMTP
+    from castor.supressao import Supressor
+
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    config = lido.dados.get("aviso") or {}
+    supressor = Supressor(raiz / "avisos.json",
+                          janela_em_minutos=config.get("janela_em_minutos", 60))
+
+    campos = ("servidor", "porta", "usuario", "de", "para", "variavel")
+    faltando = [campo for campo in campos if not config.get(campo)]
+    if faltando:
+        print(f"[castor] aviso desligado: falta {', '.join(faltando)} em "
+              f"'aviso' do manifesto. A ronda roda, mas o que ela achar não "
+              f"chega a ninguém.", file=sys.stderr)
+        return None, supressor, "", ""
+
+    senha = _cofre_de(lido).get(config["variavel"])
+    if senha is None:
+        print(f"[castor] aviso desligado: o cofre não tem "
+              f"{config['variavel']}.", file=sys.stderr)
+        return None, supressor, "", ""
+
+    remetente = RemetenteSMTP(servidor=config["servidor"],
+                              porta=int(config["porta"]),
+                              usuario=config["usuario"], senha=senha)
+    return remetente, supressor, config["de"], config["para"]
+
+
+def _enviar_com_cuidado(remetente, mensagem) -> bool:
+    try:
+        remetente.enviar(mensagem)
+        return True
+    except Exception as erro:
+        print(f"[castor] a ronda terminou, mas o aviso não saiu: {erro}",
+              file=sys.stderr)
+        return False
+
+
+def _avisar_da_ronda(opcoes, raiz, resultados, pioraram, melhoraram) -> None:
+    """Avisa o que MUDOU de estado — não o que continua mal."""
+    from castor.correio import Aviso, montar_mensagem
+
+    if not pioraram and not melhoraram:
+        return
+    remetente, supressor, de, para = _aviso_da_principal(opcoes, raiz)
+    if remetente is None:
+        return
+
+    por_nome = {r.nome: r for r in resultados}
+    agora = time.time()
+    for nome in pioraram:
+        alarme = f"ronda.{nome}.falhou"
+        if not supressor.pode_avisar(alarme, agora=agora):
+            continue
+        aviso = Aviso(alarme=alarme, maquina=nome, assunto_extra="ronda",
+                      corpo=por_nome[nome].detalhe)
+        if _enviar_com_cuidado(remetente,
+                               montar_mensagem(aviso, de=de, para=para)):
+            supressor.registrar(alarme, agora=agora)
+    for nome in melhoraram:
+        aviso = Aviso(alarme=f"ronda.{nome}.voltou", maquina=nome,
+                      assunto_extra="ronda: voltou ao normal", corpo="")
+        _enviar_com_cuidado(remetente, montar_mensagem(aviso, de=de, para=para))
+        # Esquece o alarme de falha: se ela voltar dentro da janela, avisa de
+        # novo. Silêncio depois de um "voltou ao normal" lê-se como "está bem".
+        supressor.esquecer(f"ronda.{nome}.falhou")
+
+
+def _checar_uma(opcoes, nome: str, declarada: dict, tipo: str):
+    maquina = declarada["maquina"]
+    if tipo == "expiracao":
+        # A única que roda AQUI: um nó não lê a própria expiração.
+        tailscale = _binario_do_tailscale()
+        if tailscale is None:
+            return mod_ronda.Resultado(
+                nome=f"expiracao:{maquina}", passou=False,
+                detalhe="não achei o comando 'tailscale' nesta máquina")
+        try:
+            expiracao = mod_rede.expiracao_de(_status_da_rede(tailscale), maquina)
+        except (mod_rede.ErroDeRede, ValueError) as erro:
+            return mod_ronda.Resultado(nome=f"expiracao:{maquina}", passou=False,
+                                       detalhe=str(erro))
+        return mod_ronda.avaliar_expiracao(maquina, expiracao)
+
+    destino_ssh = _destino_de(opcoes, maquina)
+    if tipo == "servico":
+        situacao = _perguntar(destino_ssh,
+                              f"is-active {declarada['servico']}.service")
+        return mod_ronda.avaliar_servico(nome, situacao)
+
+    saida = mod_conexao.conferir(
+        mod_conexao.executar(destino_ssh, declarada["comando"]), destino_ssh)
+    return mod_ronda.avaliar_comando(nome, saida.codigo, saida.texto + saida.erro)
+
+
+def _rodar_ronda(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    declaradas = lido.dados.get("ronda", {}).get("checagens", {})
+    # Confere TODAS antes de rodar QUALQUER uma: declaração torta descoberta no
+    # meio deixaria metade das checagens rodadas e metade não.
+    tipos = {nome: mod_ronda.conferir_declaracao(nome, declarada)
+             for nome, declarada in sorted(declaradas.items())}
+
+    # A expiração roda AQUI, na principal — máquina fora do ar não a impede, e é
+    # justamente quando a máquina some que saber da expiração importa.
+    resultados = [_checar_uma(opcoes, nome, declarada, "expiracao")
+                  for nome, declarada in sorted(declaradas.items())
+                  if tipos[nome] == "expiracao"]
+
+    # Agrupadas por máquina: é o que faz "máquina fora do ar é UMA falha" ser
+    # evidente no laço, em vez de depender de limpeza depois do fato.
+    por_maquina = {}
+    for nome, declarada in sorted(declaradas.items()):
+        if tipos[nome] != "expiracao":
+            por_maquina.setdefault(declarada["maquina"], []).append(
+                (nome, declarada))
+
+    for maquina, checagens in sorted(por_maquina.items()):
+        for nome, declarada in checagens:
+            try:
+                resultados.append(
+                    _checar_uma(opcoes, nome, declarada, tipos[nome]))
+            except mod_conexao.FalhaDeConexao as erro:
+                resultados.extend(mod_ronda.maquina_inalcancavel(
+                    maquina, dict(checagens), str(erro)))
+                break
+
+    for resultado in resultados:
+        print(f"{resultado.nome}\t{'passou' if resultado.passou else 'falhou'}"
+              f"\t{resultado.detalhe}")
+
+    if opcoes.seco:
+        # Não grava: o arquivo é a linha de base da comparação, e sobrescrevê-lo
+        # faria a falha em curso deixar de ser avisada na ronda seguinte.
+        print("[seco] nada foi avisado e nada foi gravado.")
+        return CODIGO_DE_RONDA if any(not r.passou for r in resultados) else 0
+
+    raiz = _raiz_do_estado()
+    arquivo = raiz / "ronda.json"
+    anterior = mod_ronda.ultima(arquivo)
+    guardados = anterior["resultados"] if anterior else None
+    pioraram = mod_ronda.piorou(guardados, resultados)
+    melhoraram = mod_ronda.melhorou(guardados, resultados)
+    mod_ronda.gravar(arquivo, resultados, agora=time.time())
+    _avisar_da_ronda(opcoes, raiz, resultados, pioraram, melhoraram)
+    return CODIGO_DE_RONDA if any(not r.passou for r in resultados) else 0
+
+
+def _estado_da_ronda(opcoes) -> int:
+    guardado = mod_ronda.ultima(_raiz_do_estado() / "ronda.json")
+    if guardado is None:
+        print("nenhuma ronda rodou nesta máquina ainda. Rode "
+              "'castor ronda rodar'.", file=sys.stderr)
+        return 1
+    quando = time.strftime("%Y-%m-%d %H:%M %z",
+                           time.localtime(guardado["quando"]))
+    idade = int((time.time() - guardado["quando"]) // 3600)
+    print(f"última ronda: {quando} ({idade}h atrás)")
+    for resultado in guardado["resultados"]:
+        print(f"{resultado['nome']}\t"
+              f"{'passou' if resultado['passou'] else 'falhou'}\t"
+              f"{resultado['detalhe']}")
+    return CODIGO_DE_RONDA if any(
+        not r["passou"] for r in guardado["resultados"]) else 0
+
+
+def _despachar_ronda(opcoes) -> int:
+    if opcoes.verbo == "rodar":
+        return _rodar_ronda(opcoes)
+    return _estado_da_ronda(opcoes)
+
+
 def _despachar_segredos(opcoes) -> int:
     if opcoes.verbo == "estado":
         return _estado_dos_segredos(opcoes)
@@ -793,6 +988,15 @@ def principal(argumentos: list[str] | None = None) -> int:
             return _despachar_chave(opcoes)
         if opcoes.area == "maquina":
             return _despachar_maquina(opcoes)
+        if opcoes.area == "ronda":
+            try:
+                return _despachar_ronda(opcoes)
+            except mod_ronda.ChecagemInvalida as erro:
+                print(str(erro), file=sys.stderr)
+                return 1
+            except mod_conexao.FalhaDeConexao as erro:
+                print(str(erro), file=sys.stderr)
+                return CODIGOS.get(type(erro), 5)
         if opcoes.area == "servico":
             try:
                 return _despachar_servico(opcoes)

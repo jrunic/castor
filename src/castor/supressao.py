@@ -32,6 +32,20 @@ class Supressor:
     def registrar(self, alarme: str, agora: float) -> None:
         dados = self._ler()
         dados[alarme] = agora
+        self._gravar(dados)
+
+    def esquecer(self, alarme: str) -> None:
+        """Apaga o registro do alarme.
+
+        Chamado quando a checagem volta ao normal: sem isto, uma falha nova
+        dentro da mesma janela ficaria muda — e silêncio logo depois de um
+        'voltou ao normal' lê-se como 'continua bem'.
+        """
+        dados = self._ler()
+        if dados.pop(alarme, None) is not None:
+            self._gravar(dados)
+
+    def _gravar(self, dados: dict) -> None:
         self.caminho.parent.mkdir(parents=True, exist_ok=True)
         temporario = self.caminho.with_suffix(".parcial")
         temporario.write_text(json.dumps(dados), encoding="utf-8")

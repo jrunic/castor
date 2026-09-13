@@ -35,3 +35,18 @@ def test_estado_corrompido_nao_impede_o_aviso(tmp_path):
     caminho = tmp_path / "avisos.json"
     caminho.write_text("{ isto não é json", encoding="utf-8")
     assert Supressor(caminho, janela_em_minutos=60).pode_avisar("a", agora=1) is True
+
+
+def test_esquecer_deixa_o_proximo_aviso_passar(tmp_path):
+    """Depois de 'voltou ao normal', uma falha nova não pode ficar muda."""
+    supressor = Supressor(tmp_path / "avisos.json", janela_em_minutos=60)
+    assert supressor.pode_avisar("ronda.disco.falhou", agora=1000.0)
+    supressor.registrar("ronda.disco.falhou", agora=1000.0)
+    assert not supressor.pode_avisar("ronda.disco.falhou", agora=1060.0)
+
+    supressor.esquecer("ronda.disco.falhou")
+    assert supressor.pode_avisar("ronda.disco.falhou", agora=1060.0)
+
+
+def test_esquecer_alarme_que_nunca_avisou_nao_explode(tmp_path):
+    Supressor(tmp_path / "avisos.json", janela_em_minutos=60).esquecer("nunca")

@@ -22,9 +22,11 @@ def test_pacote_roda_e_enumera_as_areas(tmp_path):
 
 def test_pacote_propaga_codigo_de_saida(tmp_path):
     # Area sem verbos devolve 1. Se o ponto de entrada descartar o retorno,
-    # o pacote sai 0 e a falha some.
+    # o pacote sai 0 e a falha some. Conforme as areas ganham verbos, este
+    # teste migra para a proxima que ainda nao tem.
     alvo = construir(tmp_path)
-    saida = subprocess.run([sys.executable, str(alvo), "ronda"], capture_output=True, text=True)
+    saida = subprocess.run([sys.executable, str(alvo), "atualizacao"],
+                           capture_output=True, text=True)
     assert saida.returncode == 1
 
 
