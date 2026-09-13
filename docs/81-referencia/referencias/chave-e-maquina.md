@@ -60,6 +60,7 @@ Nenhum acumula dois sentidos. É por eles que um agente distingue o que fazer.
 | 6 | expiração de chave de nó não conferida | desativar no painel e repetir |
 | 7 | roteiro de preparo parado | passo sem efeito, prova faltando ou medição incompleta — a mensagem diz qual |
 | 8 | algo ausente ou desatualizado | ver [`segredos-e-cofre.md`](segredos-e-cofre.md) |
+| 9 | o serviço não ficou ativo ou não parou | ver [`servico.md`](servico.md) |
 
 ## O manifesto
 

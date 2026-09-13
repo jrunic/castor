@@ -56,12 +56,11 @@ O passo a passo está em
 |---|---|---|
 | `chave` | `criar`, `usar`, `mostrar` | qualquer sistema |
 | `maquina` | `preparar`, `adicionar`, `listar`, `testar`, `remover` | qualquer sistema |
+| `segredos` | `gerar`, `enviar`, `estado`, `ver` | qualquer sistema |
+| `servico` | `instalar`, `remover`, `estado`, `reiniciar`, `registro` | Linux |
 | `rotina` | `rodar`, `agendar`, `listar` | Linux |
-| `segredos` | `gerar`, `ver` | qualquer sistema |
 
-`servico`, `ronda` e `atualizacao` aparecem em `castor --help` e ainda não têm
-verbos. A área `segredos` está em modelo antigo e vai mudar — veja o
-`CONTEXTO.md` antes de usá-la.
+`ronda` e `atualizacao` aparecem em `castor --help` e ainda não têm verbos.
 
 ## Três regras que o castor segue
 

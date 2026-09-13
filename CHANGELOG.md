@@ -13,6 +13,20 @@ tags: [changelog]
 
 ## Não publicado
 
+- **A área `servico`**: `instalar`, `remover`, `estado`, `reiniciar` e
+  `registro`. A unit systemd é gerada do manifesto — sem wrapper de shell, com
+  `EnvironmentFile=` apontando para o que a área `segredos` entrega. `instalar`
+  entrega o segredo antes de subir, e **confere que o serviço ficou ativo**;
+  `remover` tira unit e segredo e confere que parou e desabilitou. Código de
+  saída **9** quando o mundo não mudou. Linux apenas.
+- **`instalar` liga o linger do usuário na cliente**, com sudo, e confere. Sem
+  ele o serviço morreria quando a última sessão fechasse. **Isto muda a máquina
+  além do castor:** o usuário passa a ter processos de pé sem sessão aberta. O
+  `remover` não desliga o linger, porque ele pode estar sustentando outro
+  serviço.
+- **`servico reiniciar` é o que leva um segredo trocado ao processo** que o
+  consome. Sem ele, entregar arquivo novo não mudava nada em memória.
+
 **Mudança de comportamento:** o caminho padrão do manifesto passou de
 `./castor.json`, relativo ao diretório de onde se chama, para
 `~/.config/castor/castor.json`. O cron da máquina cliente não tem diretório de

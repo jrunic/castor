@@ -132,4 +132,11 @@ principal — a cliente não acessa a principal, e endereço ali seria convite.
 Ele compara **arquivos**, não processos. Um serviço que já estava rodando
 continua com o valor antigo em memória depois de o arquivo ser trocado — e o
 `estado` vai dizer "em dia", corretamente, porque o arquivo está certo.
-Reiniciar o serviço é outro comando.
+
+Quem leva o valor novo ao processo é
+[`castor servico reiniciar`](servico.md):
+
+```sh
+castor segredos enviar sentinela --maquina represa
+castor servico reiniciar sentinela --maquina represa
+```
