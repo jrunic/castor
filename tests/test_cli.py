@@ -90,3 +90,15 @@ def test_chave_criar_grava_o_par_e_anota_o_manifesto(tmp_path, capsys):
     saida = capsys.readouterr().out
     assert "ssh-ed25519" in saida
     assert json.loads(manifesto.read_text(encoding="utf-8"))["chave"] == str(destino)
+
+
+def test_toda_area_lista_os_proprios_verbos():
+    """Critério 1 da spec, inteiro: não basta a área aparecer na ajuda.
+
+    Enquanto uma área existia sem verbos, ela aparecia em 'castor --help' e não
+    respondia nada — a superfície parecia maior do que era.
+    """
+    for area in AREAS:
+        saida = executar(area, "--help")
+        assert saida.returncode == 0, f"{area}: {saida.stderr}"
+        assert "verbo" in saida.stdout, f"{area} não lista verbos"

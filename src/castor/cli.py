@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import castor
+from castor import atualizacao as mod_atualizacao
 from castor import chaves as mod_chaves
 from castor import cliente as mod_cliente
 from castor import cofre as mod_cofre
@@ -164,10 +165,19 @@ def construir_analisador() -> argparse.ArgumentParser:
     verbos_ronda.add_parser(
         "estado", help="mostra o resultado da última ronda, sem reexecutar")
 
-    for nome in AREAS:
-        if nome not in ("chave", "maquina", "segredos", "rotina", "servico",
-                        "ronda"):
-            areas.add_parser(nome, help=f"área {nome}")
+    atualizacao = areas.add_parser(
+        "atualizacao", help="área atualizacao — manter as máquinas em dia")
+    verbos_atualizacao = atualizacao.add_subparsers(dest="verbo",
+                                                    metavar="verbo",
+                                                    required=True)
+    rodar_atualizacao = verbos_atualizacao.add_parser(
+        "rodar", help="atualiza os alvos declarados, e o castor por último")
+    rodar_atualizacao.add_argument("--seco", action="store_true",
+                                   help="mostra o que faria, sem fazer")
+    verbos_atualizacao.add_parser(
+        "estado", help="que versão está em cada máquina, sem atualizar")
+
+    # Não há mais área sem verbos: as sete listam os próprios.
     return analisador
 
 
@@ -684,6 +694,122 @@ def _estado_da_ronda(opcoes) -> int:
         not r["passou"] for r in guardado["resultados"]) else 0
 
 
+CODIGO_DE_ATUALIZACAO = 11
+
+
+def _aqui(comando: str) -> str:
+    """Roda na própria máquina. A principal não tem ssh de volta para si."""
+    concluido = subprocess.run(["sh", "-c", comando], capture_output=True,
+                               text=True)
+    return concluido.stdout.strip()
+
+
+def _versao_em(destino_ssh, nome: str, declarado: dict) -> str:
+    return mod_conexao.executar(
+        destino_ssh,
+        mod_atualizacao.comando_de_versao(nome, declarado)).texto.strip()
+
+
+def _alvos_por_maquina(lido) -> list:
+    """Os alvos na ordem de execução: o castor por último, sempre.
+
+    E a principal por último de tudo — o processo em execução continua com o
+    código velho em memória, e o relatório precisa ter saído antes.
+    """
+    declarados = lido.dados.get("atualizacao", {}).get("alvos", {})
+    pares = []
+    for nome, declarado in sorted(declarados.items()):
+        for maquina in declarado.get("maquinas", []):
+            pares.append((maquina, nome, declarado))
+    return sorted(pares, key=lambda par: (par[2].get("tipo") == "castor",
+                                          lido.maquina(par[0]).e_principal))
+
+
+def _atualizar_um(opcoes, lido, maquina, nome, declarado) -> tuple:
+    if lido.maquina(maquina).e_principal:
+        # Sem ssh: o _destino_de recusa a principal, e com razão.
+        destino_ssh = None
+        antes = _aqui(mod_atualizacao.comando_de_versao(nome, declarado))
+        _aqui(mod_atualizacao.comando_de(declarado))
+        depois = _aqui(mod_atualizacao.comando_de_versao(nome, declarado))
+    else:
+        destino_ssh = _destino_de(opcoes, maquina)
+        antes = _versao_em(destino_ssh, nome, declarado)
+        mod_conexao.conferir(
+            mod_conexao.executar(destino_ssh,
+                                 mod_atualizacao.comando_de(declarado)),
+            destino_ssh)
+        depois = _versao_em(destino_ssh, nome, declarado)
+
+    situacao, passou = mod_atualizacao.concluir(nome, antes, depois)
+
+    servico = declarado.get("reiniciar")
+    if passou and servico and antes.strip() != depois.strip():
+        if destino_ssh is None:
+            return (f"{situacao}; reiniciar '{servico}' na principal não é "
+                    f"desta versão", passou)
+        _mandar(destino_ssh, f"restart {servico}.service")
+        if _perguntar(destino_ssh, f"is-active {servico}.service") != "active":
+            return (f"{situacao}, mas '{servico}' não voltou", False)
+        situacao = f"{situacao}, '{servico}' reiniciado"
+    return (situacao, passou)
+
+
+def _rodar_atualizacao(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    problemas = 0
+    caidas = set()
+    for maquina, nome, declarado in _alvos_por_maquina(lido):
+        if opcoes.seco:
+            print(f"[seco] {maquina}\t{nome}\t"
+                  f"{mod_atualizacao.comando_de(declarado)}")
+            continue
+        if maquina in caidas:
+            print(f"{maquina}\t{nome}\tpulado\tmáquina inalcançável")
+            continue
+        try:
+            situacao, passou = _atualizar_um(opcoes, lido, maquina, nome,
+                                             declarado)
+        except mod_conexao.FalhaDeConexao as erro:
+            caidas.add(maquina)
+            print(f"{maquina}\t{nome}\tinalcançável\t{erro}")
+            problemas += 1
+            continue
+        print(f"{maquina}\t{nome}\t{'ok' if passou else 'falhou'}\t{situacao}")
+        if not passou:
+            problemas += 1
+    return CODIGO_DE_ATUALIZACAO if problemas else 0
+
+
+def _estado_da_atualizacao(opcoes) -> int:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    ausentes = 0
+    for maquina, nome, declarado in _alvos_por_maquina(lido):
+        try:
+            if lido.maquina(maquina).e_principal:
+                versao = _aqui(mod_atualizacao.comando_de_versao(nome,
+                                                                 declarado))
+            else:
+                versao = _versao_em(_destino_de(opcoes, maquina), nome,
+                                    declarado)
+        except (mod_conexao.FalhaDeConexao, ErroDeManifesto) as erro:
+            print(f"{maquina}\t{nome}\tinalcançável\t{erro}")
+            ausentes += 1
+            continue
+        if not versao:
+            print(f"{maquina}\t{nome}\tausente")
+            ausentes += 1
+        else:
+            print(f"{maquina}\t{nome}\t{versao}")
+    return CODIGO_DE_ATUALIZACAO if ausentes else 0
+
+
+def _despachar_atualizacao(opcoes) -> int:
+    if opcoes.verbo == "rodar":
+        return _rodar_atualizacao(opcoes)
+    return _estado_da_atualizacao(opcoes)
+
+
 def _despachar_ronda(opcoes) -> int:
     if opcoes.verbo == "rodar":
         return _rodar_ronda(opcoes)
@@ -988,6 +1114,15 @@ def principal(argumentos: list[str] | None = None) -> int:
             return _despachar_chave(opcoes)
         if opcoes.area == "maquina":
             return _despachar_maquina(opcoes)
+        if opcoes.area == "atualizacao":
+            try:
+                return _despachar_atualizacao(opcoes)
+            except mod_atualizacao.AlvoInvalido as erro:
+                print(str(erro), file=sys.stderr)
+                return 1
+            except mod_conexao.FalhaDeConexao as erro:
+                print(str(erro), file=sys.stderr)
+                return CODIGOS.get(type(erro), 5)
         if opcoes.area == "ronda":
             try:
                 return _despachar_ronda(opcoes)
