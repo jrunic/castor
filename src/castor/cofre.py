@@ -73,6 +73,19 @@ def filtrar(valores: dict[str, str], chaves: list[str], *,
     return {chave: valores[chave] for chave in chaves}
 
 
+def substituir_marcas(valor: str, *, casa: str, casa_principal: str) -> str:
+    """Só troca as duas marcas. Quem recusa o que sobra é 'resolver'.
+
+    Existe separada porque o comando de uma unit systemd pode legitimamente
+    referenciar a própria variável de ambiente — ali o cifrão não é engano.
+    """
+    resolvido = valor
+    valores = {"casa": casa, "casa_principal": casa_principal}
+    for nome, padrao in MARCAS:
+        resolvido = padrao.sub(valores[nome], resolvido)
+    return resolvido
+
+
 def resolver(valor: str, *, casa: str, casa_principal: str) -> str:
     """Resolve as duas marcas e recusa tudo o que sobrar.
 
@@ -80,10 +93,7 @@ def resolver(valor: str, *, casa: str, casa_principal: str) -> str:
     expande cifrão, o systemd o lê literal. Valor que os faria divergir não sai
     daqui.
     """
-    resolvido = valor
-    valores = {"casa": casa, "casa_principal": casa_principal}
-    for nome, padrao in MARCAS:
-        resolvido = padrao.sub(valores[nome], resolvido)
+    resolvido = substituir_marcas(valor, casa=casa, casa_principal=casa_principal)
     if "$" in resolvido or "`" in resolvido:
         raise ValorHostil(
             f"{valor!r} tem cifrão ou crase que não é marca conhecida. O shell "
