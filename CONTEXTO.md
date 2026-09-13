@@ -136,15 +136,10 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Estado atual
 
-**0.1.0 publicada** em 13/09/2026. De pé, com suíte verde: a fundação, as áreas
-`chave`, `maquina` e `rotina`, e o instalador de bootstrap. Sem verbos ainda:
-`servico`, `ronda` e `atualizacao`. Toda mudança de comportamento entra no
-`CHANGELOG.md` no mesmo commit.
-
-**A área `segredos` está em modelo antigo.** O código resolve um *modelo* com
-marca própria; a decisão em vigor é *cofre* filtrado por serviço, com `$HOME` e
-`$HOME_PRINCIPAL`. A conversão está planejada. Quem for mexer em `segredos`
-converte antes de acrescentar — não estende o modelo antigo.
+**0.1.1 publicada** em 13/09/2026. De pé, com suíte verde: a fundação, as áreas
+`chave`, `maquina`, `segredos` e `rotina`, e o instalador de bootstrap. Sem
+verbos ainda: `servico`, `ronda` e `atualizacao`. Toda mudança de comportamento
+entra no `CHANGELOG.md` no mesmo commit.
 
 ## Referências
 
@@ -152,4 +147,5 @@ converte antes de acrescentar — não estende o modelo antigo.
 - `docs/81-referencia/explicacoes/visao-geral.md` — o quê e por quê
 - `docs/81-referencia/guias/primeira-maquina.md` — pôr a primeira cliente de pé
 - `docs/81-referencia/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
+- `docs/81-referencia/referencias/segredos-e-cofre.md` — o cofre, as marcas, a entrega
 - `docs/81-referencia/decisoes/` — ADRs locais

@@ -52,7 +52,30 @@ acessa a principal.
 Repare que você não digitou diretório, usuário nem sistema: o comando mediu.
 Campo digitado é caminho errado que ninguém vai saber diagnosticar depois.
 
-## 3. Preparar a máquina cliente
+## 3. O cofre, se você quer ser avisado
+
+Se você quer que a máquina saiba avisar por e-mail quando algo falhar — e quer —
+o cofre precisa existir antes. Ele é um arquivo que você edita:
+
+```sh
+mkdir -p ~/.config/castor
+cat > ~/.config/castor/cofre <<'FIM'
+SMTP_SERVIDOR=smtp.seuprovedor.test
+SMTP_PORTA=587
+SMTP_USUARIO=voce@seuprovedor.test
+SMTP_SENHA=a-senha-de-aplicativo
+FIM
+chmod 600 ~/.config/castor/cofre
+```
+
+E o manifesto declara onde ele está e quem recebe o quê — o formato completo
+está em [`referencias/segredos-e-cofre.md`](../referencias/segredos-e-cofre.md).
+
+Com isso no lugar, o `preparar` do passo seguinte termina entregando a
+credencial à máquina, e ela já nasce sabendo avisar. Sem isso, ele diz em voz
+alta que a máquina **não sabe avisar**, e o que fazer para consertar.
+
+## 4. Preparar a máquina cliente
 
 ```sh
 castor maquina preparar represa \
@@ -72,7 +95,8 @@ O comando vai, em ordem:
 5. **Instalar o castor** na cliente.
 6. **Ligar a máquina à rede privada** e imprimir um endereço para você abrir no
    navegador desta máquina, onde você já está autenticado. Um clique.
-7. **Conduzir a desativação da expiração da chave de nó** — mostra o caminho no
+7. **Entregar a credencial de aviso**, se o cofre estiver declarado.
+8. **Conduzir a desativação da expiração da chave de nó** — mostra o caminho no
    painel, espera, e confere. Se a expiração continuar ativa, o comando **não**
    anuncia sucesso: quando a data chegar, a máquina sai da rede e o acesso vai
    embora junto.
@@ -81,7 +105,7 @@ Se algum passo rodar sem produzir efeito, o comando para ali e diz qual foi. A
 máquina continua acessível pelo caminho anterior — nenhum passo que fecha um
 acesso roda antes de o acesso novo ter sido provado.
 
-## 4. Conferir
+## 5. Conferir
 
 ```sh
 castor maquina listar
@@ -92,12 +116,17 @@ castor maquina testar represa
 providências são diferentes: máquina fora do ar, chave recusada, ou castor
 ausente do outro lado.
 
-## O que ainda falta
+## Depois: trocar um segredo
 
-A máquina está de pé, mas **ainda não sabe avisar quando algo falha**. A
-credencial de e-mail é um segredo, e segredo chega pela entrega do cofre — que
-é a área `segredos`. Enquanto isso não for feito, uma rotina pode falhar em
-silêncio.
+Editou o cofre? Entregue de novo, e confira:
+
+```sh
+castor segredos enviar correio --maquina represa
+castor segredos estado
+```
+
+`estado` responde, por serviço e máquina, se o que está lá corresponde ao que o
+cofre produziria hoje — sem imprimir valor nenhum.
 
 ## Quando der errado
 

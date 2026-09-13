@@ -16,7 +16,7 @@ tags: [referencia, cli, chave, maquina, manifesto]
 
 | Opção | Efeito |
 |---|---|
-| `--manifesto <caminho>` | manifesto a usar. Padrão: `$CASTOR_MANIFESTO`, ou `./castor.json` |
+| `--manifesto <caminho>` | manifesto a usar. Padrão: `$CASTOR_MANIFESTO`, ou `~/.config/castor/castor.json` |
 | `--versao` | imprime a versão e sai |
 | `--help` | lista as áreas; `castor <área> --help` lista os verbos |
 
@@ -59,6 +59,7 @@ Nenhum acumula dois sentidos. É por eles que um agente distingue o que fazer.
 | 5 | outro fracasso de conexão | ler o que o ssh disse, repassado na mensagem |
 | 6 | expiração de chave de nó não conferida | desativar no painel e repetir |
 | 7 | roteiro de preparo parado | passo sem efeito, prova faltando ou medição incompleta — a mensagem diz qual |
+| 8 | algo ausente ou desatualizado | ver [`segredos-e-cofre.md`](segredos-e-cofre.md) |
 
 ## O manifesto
 
@@ -113,10 +114,15 @@ pela metade.
 | `rede` | `provar_chave`, `sudo` | — |
 | `expiracao` | — | conduzido pelo comando, conferido na principal |
 | `encerrar_acesso_inicial` | `provar_chave`, `sudo`, `instalar_castor` | **não roda nesta versão** |
-| `aviso` | — | **não roda nesta versão**: depende da entrega de segredos |
+
 
 Passo que declara exigência não roda sem a prova no lugar. É o mecanismo que
 impede fechar um caminho de acesso antes de o novo funcionar.
+
+Depois do roteiro, o comando cadastra a máquina e **entrega a credencial de
+aviso**, se o serviço estiver declarado — ver
+[`segredos-e-cofre.md`](segredos-e-cofre.md). Sem ele declarado, o comando diz
+em voz alta que a máquina não sabe avisar.
 
 ## Uma limitação que vale conhecer
 

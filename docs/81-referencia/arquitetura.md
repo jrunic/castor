@@ -48,8 +48,9 @@ castor/
 | `medicao.py` | A sonda e a interpretação do que a máquina respondeu sobre si |
 | `rede.py` | Tailscale: subida, URL de login, expiração de chave de nó |
 | `preparar.py` | Roteiro de passos com efeito conferido e prova exigida |
-| `segredos.py` | Gera e descreve o arquivo de segredo de um serviço — **em modelo antigo**, ver `CONTEXTO.md` |
-| `expansao.py` | Expansão de marcas no modelo de segredo — idem |
+| `cofre.py` | Ler o cofre, recusar permissão frouxa, filtrar por serviço, resolver as duas marcas |
+| `segredos.py` | Montar o conteúdo de um serviço, somar, e descrever sem revelar |
+| `cliente.py` | Montar o manifesto-da-cliente a partir do da principal |
 | `rotina.py` | Envolve a execução: trava, teto de tempo, registro, alarme |
 | `agenda.py` | Entradas do castor no agendador do sistema |
 | `correio.py` | Monta e envia o aviso. Não decide se envia |
@@ -74,8 +75,10 @@ tempo, registro, e no caminho de falha o `correio`, filtrado pela `supressao`.
 
 ## Schema/persistência
 
-Manifesto JSON na principal (formato em
-`referencias/chave-e-maquina.md`). Estado de execução em
+Manifesto JSON na principal, em `~/.config/castor/castor.json` (formato em
+`referencias/chave-e-maquina.md` e `referencias/segredos-e-cofre.md`); cofre de
+`CHAVE=valor` ao lado dele; manifesto-da-cliente no mesmo caminho, em cada
+cliente. Estado de execução em
 `$CASTOR_ESTADO` (padrão `~/.local/state/castor`): registros, travas e o
 arquivo de avisos já enviados.
 
@@ -93,7 +96,5 @@ o resto roda com código real.
 
 ## Estado atual
 
-Áreas `chave`, `maquina` e `rotina` de pé, com o instalador de bootstrap.
-`segredos` existe em modelo antigo — ver a seção correspondente no
-`CONTEXTO.md` antes de mexer. `servico`, `ronda` e `atualizacao` ainda sem
-verbos.
+Áreas `chave`, `maquina`, `segredos` e `rotina` de pé, com o instalador de
+bootstrap. `servico`, `ronda` e `atualizacao` ainda sem verbos.

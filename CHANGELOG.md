@@ -11,6 +11,34 @@ tags: [changelog]
 
 # Histórico de versões
 
+## Não publicado
+
+**Mudança de comportamento:** o caminho padrão do manifesto passou de
+`./castor.json`, relativo ao diretório de onde se chama, para
+`~/.config/castor/castor.json`. O cron da máquina cliente não tem diretório de
+trabalho que alguém controle. `CASTOR_MANIFESTO` continua mandando.
+
+- **A área `segredos` passa a trabalhar com um cofre.** Um arquivo de
+  `CHAVE=valor` na máquina principal, que você edita; o manifesto diz quais
+  chaves cada serviço recebe. `gerar <servico>` filtra e resolve. Sai o modelo
+  com marca própria.
+- **Duas marcas, `$HOME` e `$HOME_PRINCIPAL`**, resolvidas na geração a partir
+  do que o cadastro mediu. Qualquer outro cifrão continua recusado.
+- **`segredos enviar`** entrega o arquivo do serviço à cliente pela entrada
+  padrão do ssh — sem arquivo temporário do outro lado — e leva junto o
+  **manifesto-da-cliente**, que é só o que diz respeito àquela máquina. O cofre
+  nunca vai.
+- **`segredos estado`** diz, por serviço e máquina, se o que está lá corresponde
+  ao que o cofre produziria hoje. Código de saída **8** quando algo está ausente
+  ou desatualizado. Não imprime valor nenhum.
+- **`maquina preparar` entrega a credencial de aviso** ao terminar, e a máquina
+  já nasce sabendo avisar. Quando o serviço de aviso não está declarado, ele diz
+  em voz alta que a máquina não sabe avisar, e o que fazer.
+- **Correio fora do ar não derruba mais a rotina.** Uma rotina que falhava
+  enquanto o servidor de e-mail estava inalcançável terminava com rastreamento
+  em vez do próprio código de saída — e o diagnóstico ia parar no castor em vez
+  de ir para o job.
+
 ## 0.1.1 — 13/09/2026
 
 - **O instalador confere a soma publicada** do que baixou, antes de instalar.
