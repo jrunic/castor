@@ -212,3 +212,32 @@ def test_remover_devolve_a_maquina_ao_estado_anterior(destino):
     assert "vigia.service" not in sobrou.texto
     assert "vigia.env" not in sobrou.texto
     print(f"\ndepois de remover: {sorted(sobrou.texto.split())}")
+
+
+@entrega
+def test_a_ronda_roda_contra_a_maquina_real():
+    """As três naturezas de checagem, contra a VPS. Sempre --seco: a bancada
+    não manda e-mail nem mexe na linha de base de nenhuma ronda real."""
+    seco = castor("ronda", "rodar", "--seco")
+    assert seco.returncode == 10, seco.stdout + seco.stderr
+    print(f"\nronda seca:\n{seco.stdout.strip()}")
+    assert "[seco]" in seco.stdout
+
+
+@entrega
+def test_a_expiracao_e_lida_da_principal_e_bate_com_a_realidade():
+    """A máquina de bancada teve a expiração desativada no plano 3."""
+    seco = castor("ronda", "rodar", "--seco")
+    linha = next(l for l in seco.stdout.splitlines()
+                 if l.startswith("expiracao:"))
+    assert "passou" in linha, linha
+    print(f"\n{linha}")
+
+
+@entrega
+def test_checagem_de_comando_que_passa_e_que_falha_na_maquina_real():
+    seco = castor("ronda", "rodar", "--seco")
+    linhas = {l.split("\t")[0]: l for l in seco.stdout.splitlines() if "\t" in l}
+    assert "passou" in linhas["disco-da-vps"], linhas["disco-da-vps"]
+    assert "falhou" in linhas["sempre-falha"], linhas["sempre-falha"]
+    print(f"\n{linhas['disco-da-vps']}\n{linhas['sempre-falha']}")
