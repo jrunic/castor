@@ -697,11 +697,15 @@ def _estado_da_ronda(opcoes) -> int:
 CODIGO_DE_ATUALIZACAO = 11
 
 
-def _aqui(comando: str) -> str:
-    """Roda na própria máquina. A principal não tem ssh de volta para si."""
+def _aqui(comando: str) -> tuple[str, str]:
+    """Roda na própria máquina. A principal não tem ssh de volta para si.
+
+    Devolve (saída, erro): quem falha explica no erro padrão, e descartar isso
+    deixa quem lê com o sintoma sem a causa.
+    """
     concluido = subprocess.run(["sh", "-c", comando], capture_output=True,
                                text=True)
-    return concluido.stdout.strip()
+    return concluido.stdout.strip(), concluido.stderr.strip()
 
 
 def _versao_em(destino_ssh, nome: str, declarado: dict) -> str:
@@ -729,19 +733,23 @@ def _atualizar_um(opcoes, lido, maquina, nome, declarado) -> tuple:
     if lido.maquina(maquina).e_principal:
         # Sem ssh: o _destino_de recusa a principal, e com razão.
         destino_ssh = None
-        antes = _aqui(mod_atualizacao.comando_de_versao(nome, declarado))
-        _aqui(mod_atualizacao.comando_de(declarado))
-        depois = _aqui(mod_atualizacao.comando_de_versao(nome, declarado))
+        antes, _ = _aqui(mod_atualizacao.comando_de_versao(nome, declarado))
+        _, queixa = _aqui(mod_atualizacao.comando_de(declarado))
+        depois, _ = _aqui(mod_atualizacao.comando_de_versao(nome, declarado))
     else:
         destino_ssh = _destino_de(opcoes, maquina)
         antes = _versao_em(destino_ssh, nome, declarado)
-        mod_conexao.conferir(
+        saida = mod_conexao.conferir(
             mod_conexao.executar(destino_ssh,
                                  mod_atualizacao.comando_de(declarado)),
             destino_ssh)
+        queixa = saida.erro.strip()
         depois = _versao_em(destino_ssh, nome, declarado)
 
     situacao, passou = mod_atualizacao.concluir(nome, antes, depois)
+    if not passou and queixa:
+        # O sintoma sem a causa manda quem lê procurar no escuro.
+        situacao = f"{situacao} — a máquina disse: {queixa.splitlines()[-1]}"
 
     servico = declarado.get("reiniciar")
     if passou and servico and antes.strip() != depois.strip():
@@ -787,8 +795,8 @@ def _estado_da_atualizacao(opcoes) -> int:
     for maquina, nome, declarado in _alvos_por_maquina(lido):
         try:
             if lido.maquina(maquina).e_principal:
-                versao = _aqui(mod_atualizacao.comando_de_versao(nome,
-                                                                 declarado))
+                versao, _ = _aqui(mod_atualizacao.comando_de_versao(nome,
+                                                                    declarado))
             else:
                 versao = _versao_em(_destino_de(opcoes, maquina), nome,
                                     declarado)

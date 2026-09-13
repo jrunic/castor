@@ -87,7 +87,7 @@ def test_a_principal_se_atualiza_localmente_e_sem_ssh(bancada, monkeypatch,
 
     def aqui(comando):
         locais.append(comando)
-        return "0.1.1"
+        return "0.1.1", ""   # (saída, erro) — quem falha explica no erro
     monkeypatch.setattr("castor.cli._aqui", aqui)
 
     assert principal(["--manifesto", str(bancada), "atualizacao", "rodar"]) == 0
@@ -181,3 +181,22 @@ def test_estado_com_alvo_que_nao_responde_sai_onze(bancada, monkeypatch,
     assert principal(["--manifesto", str(bancada), "atualizacao",
                       "estado"]) == 11
     assert "ausente" in capsys.readouterr().out
+
+
+def test_alvo_que_falha_diz_o_que_a_maquina_respondeu(bancada, monkeypatch,
+                                                      capsys):
+    """'não respondeu' sem a razão manda quem lê procurar no escuro.
+
+    O instalador explica a causa no erro padrão — se o comando descarta isso,
+    quem opera vê só o sintoma.
+    """
+    def recusa(destino, comando, **opcoes):
+        if "instalar.sh" in comando or "upgrade" in comando:
+            return conexao.Saida(
+                codigo=1, texto="",
+                erro="o python desta máquina é 3.9.6; o castor precisa de 3.12")
+        return conexao.Saida(codigo=0, texto="", erro="")
+    monkeypatch.setattr(conexao, "executar", recusa)
+    assert principal(["--manifesto", str(bancada), "atualizacao", "rodar"]) == 11
+    saida = capsys.readouterr().out
+    assert "3.12" in saida, saida
