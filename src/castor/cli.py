@@ -7,6 +7,7 @@ from pathlib import Path
 
 import castor
 from castor import chaves as mod_chaves
+from castor import conexao as mod_conexao
 from castor import manifesto as mod_manifesto
 from castor import segredos as mod_segredos
 from castor.manifesto import ErroDeManifesto
@@ -42,6 +43,13 @@ def construir_analisador() -> argparse.ArgumentParser:
 
     verbos_chave.add_parser("mostrar", help="imprime a chave pública")
 
+    maquina = areas.add_parser("maquina", help="área maquina — as máquinas clientes")
+    verbos_maquina = maquina.add_subparsers(dest="verbo", metavar="verbo",
+                                            required=True)
+
+    testar = verbos_maquina.add_parser("testar", help="prova a conexão com a cliente")
+    testar.add_argument("nome")
+
     segredos = areas.add_parser("segredos", help="área segredos")
     verbos = segredos.add_subparsers(dest="verbo", metavar="verbo", required=True)
 
@@ -70,7 +78,7 @@ def construir_analisador() -> argparse.ArgumentParser:
     verbos_rotina.add_parser("listar", help="mostra as rotinas do castor no agendador")
 
     for nome in AREAS:
-        if nome not in ("chave", "segredos", "rotina"):
+        if nome not in ("chave", "maquina", "segredos", "rotina"):
             areas.add_parser(nome, help=f"área {nome}")
     return analisador
 
@@ -185,6 +193,43 @@ def _despachar_chave(opcoes) -> int:
     return 0
 
 
+CODIGOS = {
+    mod_conexao.RedeInalcancavel: 2,
+    mod_conexao.ChaveRecusada: 3,
+    mod_conexao.CastorAusente: 4,
+}
+
+
+def _destino_de(opcoes, nome: str) -> mod_conexao.Destino:
+    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    maquina = lido.maquina(nome)
+    if maquina.e_principal:
+        raise ErroDeManifesto(
+            f"'{nome}' é a máquina principal — ela não é acessada, ela acessa. "
+            f"Rode este comando contra uma cliente."
+        )
+    if not maquina.endereco:
+        raise ErroDeManifesto(
+            f"a máquina '{nome}' não tem endereço no manifesto. Rode "
+            f"'castor maquina adicionar {nome} --endereco <endereço> --substituir'."
+        )
+    return mod_conexao.Destino(usuario=maquina.usuario, endereco=maquina.endereco,
+                               chave=lido.caminho_da_chave())
+
+
+def _despachar_maquina(opcoes) -> int:
+    if opcoes.verbo == "testar":
+        destino = _destino_de(opcoes, opcoes.nome)
+        try:
+            versao = mod_conexao.versao_remota(destino)
+        except mod_conexao.FalhaDeConexao as erro:
+            print(str(erro), file=sys.stderr)
+            return CODIGOS.get(type(erro), 5)
+        print(f"{opcoes.nome}: de pé, castor {versao}")
+        return 0
+    return 1
+
+
 def principal(argumentos: list[str] | None = None) -> int:
     analisador = construir_analisador()
     opcoes = analisador.parse_args(argumentos)
@@ -197,6 +242,8 @@ def principal(argumentos: list[str] | None = None) -> int:
     try:
         if opcoes.area == "chave":
             return _despachar_chave(opcoes)
+        if opcoes.area == "maquina":
+            return _despachar_maquina(opcoes)
         if opcoes.area == "segredos":
             return _despachar_segredos(opcoes)
         if opcoes.area == "rotina":
