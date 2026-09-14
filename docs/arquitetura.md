@@ -14,7 +14,7 @@ tags: [arquitetura, Python]
 
 > **Mapa fino (espinha de navegação, ADR 20260713).** Este arquivo diz *o que existe e onde* e
 > **aponta** para `explicacoes/` — nunca duplica conteúdo de design. Se uma seção crescer em prosa
-> de "por quê", mova para `docs/81-referencia/explicacoes/` e deixe só o ponteiro. O `dev-08 auditar`
+> de "por quê", mova para `docs/explicacoes/` e deixe só o ponteiro. O `dev-08 auditar`
 > fiscaliza mapa gordo.
 
 ## Visão geral
@@ -34,7 +34,7 @@ castor/
 │   └── instalar.sh   — instalador de bootstrap (o único shell do produto)
 ├── src/castor/       — o pacote
 ├── tests/            — pytest
-└── docs/81-referencia/ — arquitetura.md (este), decisoes/, dominio/ + quadrantes Diátaxis
+└── docs/ — arquitetura.md (este), decisoes/, dominio/ + quadrantes Diátaxis
 ```
 
 ## Módulos principais

@@ -53,7 +53,7 @@ avisar quando algo falhar, e o `preparar` diz isso ao terminar. O guia abaixo
 tem a sequência inteira, incluindo pôr um serviço de pé e vigiá-lo.
 
 O passo a passo está em
-[`docs/81-referencia/guias/primeira-maquina.md`](docs/81-referencia/guias/primeira-maquina.md).
+[`docs/guias/primeira-maquina.md`](docs/guias/primeira-maquina.md).
 
 ## O que existe nesta versão
 
@@ -83,8 +83,8 @@ O passo a passo está em
 ## Para agentes e desenvolvedores
 
 - `CONTEXTO.md` — padrões técnicos e restrições (comece aqui)
-- `docs/81-referencia/` — arquitetura, decisões e documentação (Diátaxis)
-- `docs/81-referencia/referencias/chave-e-maquina.md` — verbos, opções e códigos
+- `docs/` — arquitetura, decisões e documentação (Diátaxis)
+- `docs/referencias/chave-e-maquina.md` — verbos, opções e códigos
   de saída
 
 Os códigos de saída são distintos por causa: um agente distingue por código

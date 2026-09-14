@@ -95,8 +95,8 @@ CONTEXTO.md GLOSSARIO.md — contratos vivos (raiz)
 src/castor/       — pacote da aplicação
 tests/            — pytest
 91-diario/        — diários de sessão
-docs/81-referencia/decisoes/  — ADRs locais
-docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
+docs/decisoes/  — ADRs locais
+docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 ```
 
 ### Build/Run
@@ -108,9 +108,9 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Leitura obrigatória antes de spec/plano
 
-- `docs/81-referencia/arquitetura.md` — mapa estrutural
+- `docs/arquitetura.md` — mapa estrutural
 - `GLOSSARIO.md` — vocabulário do domínio (usar estes termos, nunca sinônimos)
-- `docs/81-referencia/dominio/` — modelo formal dos contextos que o trabalho toca
+- `docs/dominio/` — modelo formal dos contextos que o trabalho toca
 
 ## Restrições
 
@@ -142,7 +142,7 @@ docs/81-referencia/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 - **Stdlib primeiro** (acima), e **zero código nativo**.
 - **Runner de testes canônico:** `.venv/bin/pytest` na raiz. O `python3` de
   sistema do macOS é 3.9 e não serve — o ambiente nasce de um Python 3.12+.
-- Implementação que contradiz `docs/81-referencia/dominio/` ou `GLOSSARIO.md`
+- Implementação que contradiz `docs/dominio/` ou `GLOSSARIO.md`
   atualiza o doc no mesmo commit.
 
 ## Decisões locais divergentes
@@ -161,13 +161,13 @@ comportamento entra no `CHANGELOG.md` no mesmo commit.
 
 ## Referências
 
-- `docs/81-referencia/arquitetura.md` — mapa estrutural (carga sob demanda)
-- `docs/81-referencia/explicacoes/visao-geral.md` — o quê e por quê
-- `docs/81-referencia/guias/primeira-maquina.md` — pôr a primeira cliente de pé
-- `docs/81-referencia/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
-- `docs/81-referencia/referencias/segredos-e-cofre.md` — o cofre, as marcas, a entrega
-- `docs/81-referencia/referencias/servico.md` — a unit gerada, o linger, o código 9
-- `docs/81-referencia/referencias/rotina.md` — o que roda sozinho na cliente
-- `docs/81-referencia/referencias/ronda.md` — os três tipos de checagem, o código 10
-- `docs/81-referencia/referencias/atualizacao.md` — os alvos, a ordem, o código 11
-- `docs/81-referencia/decisoes/` — ADRs locais
+- `docs/arquitetura.md` — mapa estrutural (carga sob demanda)
+- `docs/explicacoes/visao-geral.md` — o quê e por quê
+- `docs/guias/primeira-maquina.md` — pôr a primeira cliente de pé
+- `docs/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
+- `docs/referencias/segredos-e-cofre.md` — o cofre, as marcas, a entrega
+- `docs/referencias/servico.md` — a unit gerada, o linger, o código 9
+- `docs/referencias/rotina.md` — o que roda sozinho na cliente
+- `docs/referencias/ronda.md` — os três tipos de checagem, o código 10
+- `docs/referencias/atualizacao.md` — os alvos, a ordem, o código 11
+- `docs/decisoes/` — ADRs locais
