@@ -8,8 +8,11 @@ def executar(tmp_path, *args):
     manifesto.write_text(json.dumps({
         "maquinas": {"carvalho": {"usuario": "ana", "casa": str(tmp_path), "sistema": "linux"}},
         "rotinas": {
-            "backup": {"comando": ["sh", "-c", "echo feito"], "quando": "0 3 * * *"},
-            "quebrada": {"comando": ["sh", "-c", "exit 1"], "quando": "0 4 * * *"},
+            # Como o material ensina a declarar: UMA string. A fixture antiga
+            # usava lista JSON — forma que nenhum manifesto real tem, e era ela
+            # que escondia o defeito do comando sem shell.
+            "backup": {"comando": "echo feito", "quando": "0 3 * * *"},
+            "quebrada": {"comando": "exit 1", "quando": "0 4 * * *"},
         },
         "aviso": {"janela_em_minutos": 60},
     }), encoding="utf-8")

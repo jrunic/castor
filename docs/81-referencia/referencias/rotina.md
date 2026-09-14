@@ -50,7 +50,7 @@ na cliente nesta versão: você entra na máquina uma vez, agenda, e não volta.
 | Campo | Para quê |
 |---|---|
 | `quando` | os cinco campos do `cron` |
-| `comando` | o que executar. Caminho absoluto — o `cron` tem PATH curto |
+| `comando` | o que executar, **sob `sh -c`** — pode ter argumentos, `$( )`, pipe e redirecionamento. Use caminho absoluto: o `cron` tem PATH curto |
 | `teto_em_segundos` | tempo máximo. Estourou, a rotina morre com código **124** |
 | `maquina` | **de quem é a rotina.** É por este campo que ela chega na cliente, dentro do manifesto-da-cliente |
 
@@ -70,7 +70,19 @@ filtra por ele. Veja
 
 O estado fica em `$CASTOR_ESTADO`, que por padrão é
 `~/.local/state/castor`: os registros, as travas e o arquivo de avisos já
-enviados.
+enviados. A mesma variável vale na principal, onde a `ronda` guarda o resultado
+dela.
+
+### O comando roda sob shell
+
+Como na [`ronda`](ronda.md) e na [`atualizacao`](atualizacao.md): o que você
+declara é uma linha de shell, não um caminho de executável. Então isto vale:
+
+```json
+"comando": "test $(df -P / | awk 'NR==2 {print $5+0}') -lt 90"
+```
+
+E o código de saída que chega ao castor é o da linha inteira.
 
 ## O aviso
 

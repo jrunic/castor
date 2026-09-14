@@ -18,7 +18,7 @@ class RemetenteDeMentira:
 
 def test_sucesso_devolve_zero_e_registra_a_saida(tmp_path):
     registro = tmp_path / "backup.log"
-    resultado = rodar("backup", ["sh", "-c", "echo feito"], registro=registro,
+    resultado = rodar("backup", "echo feito", registro=registro,
                       trava=tmp_path / "backup.trava")
     assert isinstance(resultado, Resultado)
     assert resultado.codigo == 0
@@ -26,7 +26,7 @@ def test_sucesso_devolve_zero_e_registra_a_saida(tmp_path):
 
 
 def test_falha_preserva_o_codigo_do_comando(tmp_path):
-    resultado = rodar("backup", ["sh", "-c", "exit 3"], registro=tmp_path / "b.log",
+    resultado = rodar("backup", "exit 3", registro=tmp_path / "b.log",
                       trava=tmp_path / "b.trava")
     assert resultado.codigo == 3
     assert resultado.falhou is True
@@ -35,8 +35,8 @@ def test_falha_preserva_o_codigo_do_comando(tmp_path):
 def test_registro_acumula_entre_execucoes(tmp_path):
     registro = tmp_path / "b.log"
     trava = tmp_path / "b.trava"
-    rodar("backup", ["sh", "-c", "echo primeira"], registro=registro, trava=trava)
-    rodar("backup", ["sh", "-c", "echo segunda"], registro=registro, trava=trava)
+    rodar("backup", "echo primeira", registro=registro, trava=trava)
+    rodar("backup", "echo segunda", registro=registro, trava=trava)
     conteudo = registro.read_text(encoding="utf-8")
     assert "primeira" in conteudo and "segunda" in conteudo
 
@@ -51,7 +51,7 @@ def test_segunda_execucao_simultanea_nao_roda(tmp_path):
         import sys
         sys.path.insert(0, {str(Path("src").resolve())!r})
         from castor.rotina import rodar
-        rodar("backup", ["sh", "-c", "touch {sentinela}; sleep 2"],
+        rodar("backup", "touch {sentinela}; sleep 2",
               registro={str(registro)!r}, trava={str(trava)!r})
     """)
     primeiro = subprocess.Popen([sys.executable, "-c", codigo])
@@ -63,7 +63,7 @@ def test_segunda_execucao_simultanea_nao_roda(tmp_path):
                 break
             time.sleep(0.05)
 
-        segundo = rodar("backup", ["sh", "-c", f"touch {marca}"],
+        segundo = rodar("backup", f"touch {marca}",
                         registro=registro, trava=trava)
         assert segundo.nao_rodou_por_trava is True
         assert not marca.exists(), "o comando rodou apesar da trava"
@@ -72,7 +72,7 @@ def test_segunda_execucao_simultanea_nao_roda(tmp_path):
 
 
 def test_teto_de_tempo_encerra_e_marca(tmp_path):
-    resultado = rodar("demorado", ["sh", "-c", "sleep 5"],
+    resultado = rodar("demorado", "sleep 5",
                       registro=tmp_path / "d.log", trava=tmp_path / "d.trava",
                       teto_em_segundos=1)
     assert resultado.estourou_o_tempo is True
@@ -82,7 +82,7 @@ def test_teto_de_tempo_encerra_e_marca(tmp_path):
 
 def test_teto_estourado_tambem_avisa(tmp_path):
     remetente = RemetenteDeMentira()
-    rodar("demorado", ["sh", "-c", "sleep 5"], registro=tmp_path / "d.log",
+    rodar("demorado", "sleep 5", registro=tmp_path / "d.log",
           trava=tmp_path / "d.trava", teto_em_segundos=1, remetente=remetente,
           supressor=Supressor(tmp_path / "a.json", janela_em_minutos=60),
           de="c@t.test", para="a@t.test", maquina="carvalho", agora=1_000_000)
@@ -98,7 +98,7 @@ def test_falha_avisa_uma_vez_por_janela(tmp_path):
                  de="castor@t.test", para="ana@t.test", maquina="carvalho")
 
     for momento in (1_000_000, 1_000_060, 1_000_120):
-        rodar("backup", ["sh", "-c", "exit 1"], agora=momento, **comum)
+        rodar("backup", "exit 1", agora=momento, **comum)
 
     assert len(remetente.enviadas) == 1, "três falhas na janela deveriam render um aviso"
     assert "backup" in remetente.enviadas[0]["Subject"]
@@ -106,7 +106,7 @@ def test_falha_avisa_uma_vez_por_janela(tmp_path):
 
 def test_sucesso_nao_avisa(tmp_path):
     remetente = RemetenteDeMentira()
-    rodar("backup", ["sh", "-c", "exit 0"], registro=tmp_path / "b.log",
+    rodar("backup", "exit 0", registro=tmp_path / "b.log",
           trava=tmp_path / "b.trava", remetente=remetente,
           supressor=Supressor(tmp_path / "a.json", janela_em_minutos=60),
           de="c@t.test", para="a@t.test", maquina="carvalho", agora=1_000_000)
@@ -120,8 +120,8 @@ def test_falha_depois_da_janela_avisa_de_novo(tmp_path):
                  remetente=remetente, supressor=supressor,
                  de="c@t.test", para="a@t.test", maquina="carvalho")
 
-    rodar("backup", ["sh", "-c", "exit 1"], agora=1_000_000, **comum)
-    rodar("backup", ["sh", "-c", "exit 1"], agora=1_000_000 + 3601, **comum)
+    rodar("backup", "exit 1", agora=1_000_000, **comum)
+    rodar("backup", "exit 1", agora=1_000_000 + 3601, **comum)
 
     assert len(remetente.enviadas) == 2
 
@@ -147,7 +147,7 @@ def test_correio_fora_do_ar_nao_engole_o_codigo_da_rotina(tmp_path):
     supressor = Supressor(tmp_path / "avisos.json", janela_em_minutos=60)
 
     resultado = rodar(
-        "limpeza", ["sh", "-c", "echo falhei >&2; exit 2"],
+        "limpeza", "echo falhei >&2; exit 2",
         registro=tmp_path / "registro.log", trava=tmp_path / "trava",
         remetente=remetente, supressor=supressor, de="a@t.test", para="b@t.test",
         maquina="represa", agora=1000.0)
@@ -160,9 +160,37 @@ def test_falha_no_envio_nao_marca_o_alarme_como_avisado(tmp_path):
     """Senão o primeiro aviso que der certo seria suprimido pelo que falhou."""
     supressor = Supressor(tmp_path / "avisos.json", janela_em_minutos=60)
 
-    rodar("limpeza", ["sh", "-c", "exit 2"],
+    rodar("limpeza", "exit 2",
                  registro=tmp_path / "registro.log", trava=tmp_path / "trava",
                  remetente=RemetenteQueCai(), supressor=supressor,
                  de="a@t.test", para="b@t.test", maquina="represa", agora=1000.0)
 
     assert supressor.pode_avisar("rotina.limpeza.falhou", agora=1001.0)
+
+
+def test_comando_com_argumentos_roda(tmp_path):
+    """O manifesto declara UMA string. Sem shell, ela vira o nome do programa.
+
+    Medido em 14/09/2026: '/usr/bin/test 1 -lt 2' explodia com FileNotFoundError
+    — o comando inteiro virava o caminho do executável. A rotina só funcionava
+    para comando sem argumento nenhum, e nenhum teste pegava porque todos
+    chamavam rodar() com lista, forma que a linha de comando nunca produz.
+    """
+    resultado = rodar("checa", "test 1 -lt 2",
+                      registro=tmp_path / "r.log", trava=tmp_path / "t")
+    assert resultado.codigo == 0
+
+
+def test_comando_com_substituicao_de_shell_roda(tmp_path):
+    """É a forma que o material ensina, com $( ) e pipe."""
+    resultado = rodar("checa", "test $(echo 3) -gt 2",
+                      registro=tmp_path / "r.log", trava=tmp_path / "t")
+    assert resultado.codigo == 0
+
+
+def test_comando_que_nao_existe_devolve_codigo_e_nao_rastreamento(tmp_path):
+    """Quem chama é o cron. Rastreamento no lugar do código some no log dele."""
+    resultado = rodar("checa", "/nao/existe/comando --flag",
+                      registro=tmp_path / "r.log", trava=tmp_path / "t")
+    assert resultado.codigo != 0
+    assert resultado.falhou

@@ -68,8 +68,12 @@ def rodar(nome: str, comando: list[str], registro: Path, trava: Path,
             return Resultado(nome=nome, codigo=0, saida="", nao_rodou_por_trava=True)
 
         try:
+            # Sob shell, como a ronda (que atravessa o ssh) e a atualização.
+            # O manifesto declara UMA string, e sem shell ela vira o nome do
+            # programa: '/usr/bin/test 1 -lt 2' virava um caminho inexistente.
             executado = subprocess.run(
-                comando, capture_output=True, text=True, timeout=teto_em_segundos,
+                ["sh", "-c", comando], capture_output=True, text=True,
+                timeout=teto_em_segundos,
             )
         except subprocess.TimeoutExpired as estouro:
             # Cada stream se normaliza sozinho: um pode vir em bytes e o outro
