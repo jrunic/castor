@@ -13,10 +13,24 @@ tags: [contexto, dev-skills, python]
 
 ## Onde o trabalho acontece
 
-Este repositório é **público**. Spec, plano, roadmap e material operacional
-**não vivem aqui** — ficam em documentos internos do autor, fora deste
-repositório. Aqui ficam código, testes, documentação de produto e ADRs de
-contrato, escritos para a audiência externa.
+**O trabalho de desenvolvimento acontece fora deste repositório**, nos
+documentos internos do autor.
+
+| Artefato | Lar canônico |
+|---|---|
+| Roadmap de ciclos, spec, plano | fora deste repositório |
+| Arquivo de apoio de tarefa, diário de sessão | fora deste repositório |
+| Discussão de negócio | fora deste repositório |
+| **Código, testes, migrations** | **este repositório** |
+| **Documentação do produto** (Diátaxis) | **este repositório**, `docs/` |
+| **ADR de contrato** | **este repositório**, `docs/decisoes/` |
+| **Modelo de domínio** | **este repositório**, `docs/dominio/` |
+| **README, CHANGELOG, GLOSSARIO, CONTEXTO** | **este repositório**, raiz |
+
+**Razão:** spec, plano, roadmap e diário nomeiam contexto que não pertence a um
+repositório aberto. O repositório carrega o que a audiência dele precisa.
+
+**As skills leem esta seção** em vez de inferir por visibilidade.
 
 ## Propósito
 
