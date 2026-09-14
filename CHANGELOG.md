@@ -11,6 +11,22 @@ tags: [changelog]
 
 # Histórico de versões
 
+## 0.2.1 — 13/09/2026
+
+- **O instalador acha o Python com nome versionado.** Ele procurava só
+  `python3`, e no macOS esse é o 3.9 do sistema — a instalação era recusada em
+  máquinas que tinham 3.12 instalado, com a mensagem mandando instalar o que já
+  estava lá. Agora procura `python3`, `python3.15`, `python3.14`, `python3.13`,
+  `python3.12`, obedece `CASTOR_PYTHON` quando declarado, e **diz qual
+  interpretador escolheu** — escolha silenciosa é o que produz "funcionou na
+  minha máquina".
+
+  Consequência prática: `castor atualizacao rodar` passa a atualizar a **máquina
+  principal** também, que é a metade macOS que a área prometia e não entregava.
+- **A falha de um alvo da atualização diz o que a máquina respondeu.** Antes
+  saía só o sintoma ("não respondeu depois da atualização"), descartando o erro
+  padrão onde a causa está escrita.
+
 ## 0.2.0 — 13/09/2026
 
 A máquina cliente passa a ser operada de ponta a ponta a partir da principal:
