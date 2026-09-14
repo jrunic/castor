@@ -79,6 +79,22 @@ A versão é perguntada **antes e depois**. Três desfechos:
 Conferir só que o `pipx` ou o `npm` saiu zero não prova que o programa roda. É a
 diferença entre afirmar sobre o processo e afirmar sobre o mundo.
 
+### O que "sem mudança" não afirma
+
+Ele diz que **a versão não mudou** — não que você está na última. São coisas
+diferentes, e a distância entre elas aparece em pelo menos três situações:
+
+- o artefato publicado ainda não propagou na borda que serve aquela máquina
+  (medido em 13/09/2026, minutos depois de publicar uma release: uma máquina
+  atualizou e a outra recebeu o artefato antigo, e as duas saíram "ok");
+- o pacote saiu do índice de onde era instalado;
+- a origem responde, mas com a versão de antes.
+
+Nos três, o relatório está tecnicamente certo e a leitura apressada está errada.
+Quando a atualização importa — logo depois de uma release, por exemplo —
+**confira a versão com `castor atualizacao estado`** em vez de ler o "ok" da
+rodada.
+
 ## `--seco`
 
 Mostra o comando que rodaria em cada máquina, e não roda nada.
