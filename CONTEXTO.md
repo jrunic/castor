@@ -53,7 +53,11 @@ Para quem: quem opera a própria máquina — e o agente de IA que opera junto.
 - **Distribuição:** aplicação Python de arquivo único, publicada como release
   no GitHub. **Não** publica em registro de pacote.
 - **Instalação:** script de bootstrap em shell — o único shell do produto,
-  mantido abaixo de cem linhas.
+  mantido **abaixo de 130 linhas**. O teto era cem até 13/09/2026, quando a
+  escolha do interpretador entrou e o arquivo chegou a 120 linhas com 93 de
+  mecanismo: caber exigiria apagar todo o "porquê" do único arquivo que a
+  audiência lê para entender a instalação. O teto existe para o shell não virar
+  programa, não para espremer comentário.
 
 ## Padrões técnicos
 

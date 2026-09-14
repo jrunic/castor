@@ -44,9 +44,15 @@ def test_o_instalador_existe_e_e_executavel():
     assert os.access(INSTALADOR, os.X_OK)
 
 
-def test_cabe_em_cem_linhas():
-    """Restrição do CONTEXTO.md: o único shell do produto não cresce."""
-    assert len(INSTALADOR.read_text(encoding="utf-8").splitlines()) < 100
+def test_cabe_no_orcamento_de_linhas():
+    """Restrição do CONTEXTO.md: o único shell do produto não vira programa.
+
+    O teto era cem e foi para 130 em 13/09/2026, quando a escolha do
+    interpretador entrou: das 120 linhas de então, 93 eram mecanismo, e caber
+    exigiria apagar todo o "porquê" do único arquivo que a audiência lê para
+    entender como a instalação funciona.
+    """
+    assert len(INSTALADOR.read_text(encoding="utf-8").splitlines()) < 130
 
 
 def test_e_sh_e_para_no_primeiro_erro():
@@ -103,20 +109,6 @@ def test_artefato_que_nao_responde_como_castor_nao_e_instalado(tmp_path):
     assert concluido.returncode != 0
     assert "não respondeu como castor" in concluido.stderr
     assert not (destino / "castor").exists()
-
-
-def test_python_velho_e_recusado_antes_de_instalar_qualquer_coisa(tmp_path):
-    """Sem isto, o castor instala e só quebra na primeira execução."""
-    falso = tmp_path / "python3"
-    falso.write_text("#!/bin/sh\necho 'Python 3.9.6'\n", encoding="utf-8")
-    falso.chmod(0o755)
-    destino = tmp_path / "bin"
-    concluido = instalar(tmp_path, PATH=f"{tmp_path}:{os.environ['PATH']}",
-                         CASTOR_ARTEFATO="/nao/importa",
-                         CASTOR_DESTINO=str(destino))
-    assert concluido.returncode != 0
-    assert "3.12" in concluido.stderr
-    assert not destino.exists()
 
 
 def test_o_comando_instalado_nao_depende_do_python3_do_PATH(tmp_path):
@@ -280,3 +272,66 @@ def test_quem_dispensa_a_soma_dispensa_por_escrito(tmp_path):
         servidor.server_close()
     assert concluido.returncode == 0, concluido.stderr
     assert (destino / "castor").exists()
+
+
+def so_o_python_velho_no_path(tmp_path):
+    """Um python3 de 3.9 e um python3.12 de verdade, como no macOS com homebrew."""
+    atalhos = tmp_path / "macos"
+    atalhos.mkdir(exist_ok=True)
+    velho = atalhos / "python3"
+    velho.write_text("#!/bin/sh\necho 'Python 3.9.6'\n", encoding="utf-8")
+    velho.chmod(0o755)
+    novo = atalhos / "python3.12"
+    if not novo.exists():
+        novo.symlink_to(sys.executable)
+    return f"{atalhos}:/usr/bin:/bin"
+
+
+def test_acha_o_python_versionado_quando_o_python3_e_velho(tmp_path):
+    """No macOS o python3 do sistema é 3.9, e o bom tem nome versionado.
+
+    Sem isto, o instalador recusa numa máquina que tem Python de sobra — e a
+    mensagem manda instalar o que já está instalado.
+    """
+    artefato = construir(tmp_path)
+    destino = tmp_path / "bin"
+    concluido = instalar(tmp_path, PATH=so_o_python_velho_no_path(tmp_path),
+                         CASTOR_ARTEFATO=str(artefato),
+                         CASTOR_DESTINO=str(destino))
+    assert concluido.returncode == 0, concluido.stderr
+    assert (destino / "castor").exists()
+
+
+def test_diz_qual_interpretador_escolheu(tmp_path):
+    """Escolha silenciosa é o que produz 'funcionou na minha máquina'."""
+    artefato = construir(tmp_path)
+    concluido = instalar(tmp_path, PATH=so_o_python_velho_no_path(tmp_path),
+                         CASTOR_ARTEFATO=str(artefato),
+                         CASTOR_DESTINO=str(tmp_path / "bin"))
+    assert "python3.12" in concluido.stdout, concluido.stdout
+
+
+def test_castor_python_manda_quando_declarado(tmp_path):
+    """Medir por padrão, obedecer quando a ordem vier."""
+    artefato = construir(tmp_path)
+    concluido = instalar(tmp_path, PATH=so_o_python_velho_no_path(tmp_path),
+                         CASTOR_PYTHON=sys.executable,
+                         CASTOR_ARTEFATO=str(artefato),
+                         CASTOR_DESTINO=str(tmp_path / "bin"))
+    assert concluido.returncode == 0, concluido.stderr
+    assert sys.executable in concluido.stdout
+
+
+def test_sem_nenhum_python_bom_continua_recusando(tmp_path):
+    so_velho = tmp_path / "sovelho"
+    so_velho.mkdir(exist_ok=True)
+    velho = so_velho / "python3"
+    velho.write_text("#!/bin/sh\necho 'Python 3.9.6'\n", encoding="utf-8")
+    velho.chmod(0o755)
+    destino = tmp_path / "bin"
+    concluido = instalar(tmp_path, PATH=f"{so_velho}:/usr/bin:/bin",
+                         CASTOR_ARTEFATO="/nao/importa",
+                         CASTOR_DESTINO=str(destino))
+    assert concluido.returncode != 0
+    assert "3.12" in concluido.stderr
+    assert not destino.exists()

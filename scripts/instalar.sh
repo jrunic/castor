@@ -25,18 +25,40 @@ somar() {
     fi
 }
 
-INTERPRETE="$(command -v python3 || true)"
-[ -n "$INTERPRETE" ] ||
-    falhar "não achei python3. O castor precisa de Python ${MINIMO_MAIOR}.${MINIMO_MENOR} ou mais novo."
+# Serve? Devolve a versão pela saída padrão, ou nada.
+serve() {
+    command -v "$1" >/dev/null 2>&1 || return 1
+    v="$("$1" -V 2>&1 | awk '{print $2}')"
+    maior="${v%%.*}"
+    resto="${v#*.}"
+    menor="${resto%%.*}"
+    case "$maior$menor" in *[!0-9]*|"") return 1 ;; esac
+    [ "$maior" -gt "$MINIMO_MAIOR" ] ||
+        { [ "$maior" -eq "$MINIMO_MAIOR" ] && [ "$menor" -ge "$MINIMO_MENOR" ]; } ||
+        return 1
+    printf '%s' "$v"
+}
 
-VERSAO="$("$INTERPRETE" -V 2>&1 | awk '{print $2}')"
-MAIOR="${VERSAO%%.*}"
-RESTO="${VERSAO#*.}"
-MENOR="${RESTO%%.*}"
-if [ "$MAIOR" -lt "$MINIMO_MAIOR" ] ||
-   { [ "$MAIOR" -eq "$MINIMO_MAIOR" ] && [ "$MENOR" -lt "$MINIMO_MENOR" ]; }; then
-    falhar "o python desta máquina é ${VERSAO}; o castor precisa de ${MINIMO_MAIOR}.${MINIMO_MENOR} ou mais novo. Instale um mais novo e rode de novo."
+# Medir por padrão, obedecer quando a ordem vier. O python3 do PATH pode ser o
+# do sistema — no macOS ele é 3.9 mesmo havendo um 3.12 com nome versionado, e
+# recusar ali seria mandar instalar o que já está instalado.
+INTERPRETE=""
+if [ -n "${CASTOR_PYTHON:-}" ]; then
+    VERSAO="$(serve "$CASTOR_PYTHON")" ||
+        falhar "CASTOR_PYTHON aponta para ${CASTOR_PYTHON}, que não serve: o castor precisa de ${MINIMO_MAIOR}.${MINIMO_MENOR} ou mais novo."
+    INTERPRETE="$CASTOR_PYTHON"
+else
+    for candidato in python3 python3.15 python3.14 python3.13 python3.12; do
+        VERSAO="$(serve "$candidato")" || continue
+        INTERPRETE="$(command -v "$candidato")"
+        break
+    done
 fi
+[ -n "$INTERPRETE" ] ||
+    falhar "não achei Python ${MINIMO_MAIOR}.${MINIMO_MENOR} ou mais novo nesta máquina. Instale um e rode de novo, ou aponte o seu com CASTOR_PYTHON=/caminho/do/python."
+
+# Escolha silenciosa é o que produz "funcionou na minha máquina".
+printf 'usando %s (%s)\n' "$INTERPRETE" "$VERSAO"
 
 TEMPORARIO="$(mktemp -d)"
 limpar() { rm -r -f "$TEMPORARIO"; }
