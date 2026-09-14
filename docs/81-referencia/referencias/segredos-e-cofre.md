@@ -20,8 +20,13 @@ Um arquivo na máquina principal, uma atribuição por linha:
 # linhas em branco e comentários são ignorados
 SMTP_SERVIDOR=smtp.exemplo.test
 SMTP_PORTA=587
+SMTP_USUARIO=castor@exemplo.test
 SMTP_SENHA="abacaxi-de-mentira-123"
 ```
+
+As quatro chaves deste exemplo são as mesmas que o serviço `correio` declara
+mais abaixo. **Cofre e declaração de serviço se leem juntos:** chave que o
+serviço pede e o cofre não tem faz `gerar` recusar, nomeando a que falta.
 
 | Regra | Por quê |
 |---|---|
@@ -101,7 +106,22 @@ processos da máquina.
 | `servicos.<nome>.destino` | onde o arquivo fica na máquina que o usa |
 | `servicos.<nome>.maquinas` | quem recebe. Sem ele, `estado` olha todas as clientes |
 | `aviso.servico` | qual serviço carrega a credencial de SMTP. Sem ele, `correio` |
+| `aviso.arquivo_de_segredo` e `aviso.variavel` | **lidos na cliente**, pela `rotina` |
+| `aviso.variavel` (de novo) | **lido na principal**, pela `ronda` — mas ali o valor sai do cofre |
 | `rotinas.<nome>.maquina` | de quem é a rotina — **é por ele que ela chega na cliente** |
+
+### O bloco `aviso` tem dois leitores, e eles não leem a mesma coisa
+
+O mesmo bloco serve à `rotina`, que roda **na cliente**, e à `ronda`, que roda
+**na principal**. A senha vem de lugares diferentes em cada uma, e é por isso que
+o bloco parece ter campo sobrando:
+
+| Quem lê | Onde roda | De onde tira a senha |
+|---|---|---|
+| [`rotina`](rotina.md) | na cliente | do arquivo em `arquivo_de_segredo`, na variável `variavel` — o cofre não está lá |
+| [`ronda`](ronda.md) | na principal | **do cofre**, na chave `variavel`; `arquivo_de_segredo` é ignorado |
+
+Servidor, porta, usuário, remetente, destinatário e janela são lidos pelos dois.
 
 ## O manifesto-da-cliente
 
@@ -120,7 +140,7 @@ principal — a cliente não acessa a principal, e endereço ali seria convite.
 | 0 | pronto, ou tudo em dia |
 | 1 | erro de uso, de manifesto ou de cofre (ausente, frouxo, chave faltando) |
 | 2 | rede inalcançável |
-| 3 | chave recusada |
+| 3 | chave recusada, ou identidade do host mudada |
 | 4 | castor ausente do outro lado |
 | 5 | outro fracasso de conexão, inclusive falha ao gravar na cliente |
 | 6 | expiração de chave de nó não conferida |

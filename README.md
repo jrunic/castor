@@ -43,9 +43,14 @@ lugar, e quem puder trocar um troca o outro.
 ```sh
 castor chave criar                          # a chave de acesso às clientes
 castor maquina adicionar <nome> --principal # esta máquina
+# declare o cofre e os serviços no manifesto — veja o guia
 castor maquina preparar <nome> --endereco <endereço> --usuario-inicial <usuário>
 castor maquina testar <nome>
 ```
+
+**Não pule o passo do meio.** Sem o cofre declarado, a máquina nasce sem saber
+avisar quando algo falhar, e o `preparar` diz isso ao terminar. O guia abaixo
+tem a sequência inteira, incluindo pôr um serviço de pé e vigiá-lo.
 
 O passo a passo está em
 [`docs/81-referencia/guias/primeira-maquina.md`](docs/81-referencia/guias/primeira-maquina.md).

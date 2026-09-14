@@ -167,6 +167,7 @@ comportamento entra no `CHANGELOG.md` no mesmo commit.
 - `docs/81-referencia/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
 - `docs/81-referencia/referencias/segredos-e-cofre.md` — o cofre, as marcas, a entrega
 - `docs/81-referencia/referencias/servico.md` — a unit gerada, o linger, o código 9
+- `docs/81-referencia/referencias/rotina.md` — o que roda sozinho na cliente
 - `docs/81-referencia/referencias/ronda.md` — os três tipos de checagem, o código 10
 - `docs/81-referencia/referencias/atualizacao.md` — os alvos, a ordem, o código 11
 - `docs/81-referencia/decisoes/` — ADRs locais

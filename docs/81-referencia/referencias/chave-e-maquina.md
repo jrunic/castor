@@ -47,7 +47,10 @@ medição. O que você informa é o que é escolha sua — o nome e o endereço.
 
 ## Códigos de saída
 
-Nenhum acumula dois sentidos. É por eles que um agente distingue o que fazer.
+Cada código nomeia **uma providência**. O 3 é o único que cobre duas causas, e
+cobre porque a providência começa igual nas duas: alguém do outro lado recusou o
+acesso, e você vai olhar a máquina antes de mexer em qualquer coisa. A mensagem
+diz qual das duas foi.
 
 | Código | Significa | Providência |
 |---|---|---|
@@ -101,6 +104,27 @@ JSON, na máquina principal. Exemplo completo:
 
 A escrita é atômica: grava ao lado e troca. Interrupção não deixa o manifesto
 pela metade.
+
+### Metade dele é escrita por comando, metade por você
+
+`chave` e `maquinas` são escritos pelos comandos — `chave criar`, `chave usar`,
+`maquina adicionar`, `maquina preparar`, `maquina remover`. **O resto você
+edita à mão**, e isso é decisão, não falta: quem guarda segredo é você, e
+ferramenta que escreve no cofre é ferramenta que pode apagá-lo.
+
+| Bloco | Quem escreve | Documentado em |
+|---|---|---|
+| `chave`, `maquinas` | os comandos | esta página |
+| `cofre`, `servicos` | você | [`segredos-e-cofre.md`](segredos-e-cofre.md) |
+| `servicos.<nome>.comando` e vizinhos | você | [`servico.md`](servico.md) |
+| `rotinas` | você | [`rotina.md`](rotina.md) |
+| `ronda` | você | [`ronda.md`](ronda.md) |
+| `atualizacao` | você | [`atualizacao.md`](atualizacao.md) |
+| `aviso` | você | [`segredos-e-cofre.md`](segredos-e-cofre.md) e [`rotina.md`](rotina.md) |
+
+Não há validador de manifesto nesta versão: cada comando recusa o que não
+entende, nomeando o campo. JSON quebrado aparece como erro de leitura no
+primeiro comando que rodar.
 
 ## Os passos de `preparar`
 

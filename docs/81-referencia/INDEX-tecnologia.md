@@ -28,5 +28,6 @@ indice: oculto
 - `referencias/atualizacao.md` — Referência da área atualizacao — os quatro tipos de alvo, a ordem de execução, o que a atualização confere e o que esta versão não tem
 - `referencias/chave-e-maquina.md` — Referência das áreas chave e maquina — verbos, opções, códigos de saída e o formato do manifesto
 - `referencias/ronda.md` — Referência da área ronda — os três tipos de checagem, onde cada um roda, o aviso por mudança de estado e o código de saída 10
+- `referencias/rotina.md` — Referência da área rotina — o que roda sozinho na máquina cliente, com trava, teto de tempo, registro e aviso de falha uma vez por janela
 - `referencias/segredos-e-cofre.md` — Referência da área segredos — o cofre, as duas marcas, os quatro verbos, o manifesto-da-cliente e os códigos de saída
 - `referencias/servico.md` — Referência da área servico — os cinco verbos, o que a unit gerada contém e por quê, o linger, e o código de saída 9
