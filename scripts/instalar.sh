@@ -54,8 +54,11 @@ else
         break
     done
 fi
-[ -n "$INTERPRETE" ] ||
-    falhar "não achei Python ${MINIMO_MAIOR}.${MINIMO_MENOR} ou mais novo nesta máquina. Instale um e rode de novo, ou aponte o seu com CASTOR_PYTHON=/caminho/do/python."
+if [ -z "$INTERPRETE" ]; then
+    IRMAO="$(dirname "$0")/instalar-python.sh"
+    INTERPRETE="$(sh "$IRMAO")" || falhar "não achei Python ${MINIMO_MAIOR}.${MINIMO_MENOR} e o instalador auxiliar falhou."
+    VERSAO="$("$INTERPRETE" -V 2>&1 | awk '{print $2}')"
+fi
 
 # Escolha silenciosa é o que produz "funcionou na minha máquina".
 printf 'usando %s (%s)\n' "$INTERPRETE" "$VERSAO"

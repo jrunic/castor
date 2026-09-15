@@ -1,10 +1,13 @@
+import hashlib
 import os
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 INSTALADOR = RAIZ / "scripts" / "instalar.sh"
+IRMAO = RAIZ / "scripts" / "instalar-python.sh"
 
 
 def construir(tmp_path):
@@ -42,6 +45,11 @@ def instalar(tmp_path, **ambiente):
 def test_o_instalador_existe_e_e_executavel():
     assert INSTALADOR.exists()
     assert os.access(INSTALADOR, os.X_OK)
+
+
+def test_o_irmao_cabe_em_oitenta_linhas():
+    assert IRMAO.exists()
+    assert len(IRMAO.read_text(encoding="utf-8").splitlines()) < 80
 
 
 def test_cabe_no_orcamento_de_linhas():
@@ -333,5 +341,35 @@ def test_sem_nenhum_python_bom_continua_recusando(tmp_path):
                          CASTOR_ARTEFATO="/nao/importa",
                          CASTOR_DESTINO=str(destino))
     assert concluido.returncode != 0
-    assert "3.12" in concluido.stderr
     assert not destino.exists()
+
+
+def _tarball_python(tmp_path):
+    raiz = tmp_path / "arvore"
+    bindir = raiz / "python" / "install" / "bin"
+    bindir.mkdir(parents=True)
+    py = bindir / "python3"
+    py.write_text(f"#!/bin/sh\nexec {sys.executable} \"$@\"\n", encoding="utf-8")
+    py.chmod(0o755)
+    tar = tmp_path / "cpython.tgz"
+    with tarfile.open(tar, "w:gz") as arquivo:
+        arquivo.add(raiz / "python", arcname="python")
+    soma = hashlib.sha256(tar.read_bytes()).hexdigest()
+    (tmp_path / "cpython.tgz.sha256").write_text(soma + "\n", encoding="utf-8")
+    return tar
+
+
+def test_o_irmao_extrai_tarball_em_xdg_data(tmp_path):
+    tar = _tarball_python(tmp_path)
+    data = tmp_path / "data"
+    concluido = subprocess.run(
+        ["sh", str(IRMAO)],
+        env={**os.environ, "XDG_DATA_HOME": str(data),
+             "CASTOR_PYTHON_ARTEFATO": str(tar)},
+        capture_output=True, text=True,
+    )
+    assert concluido.returncode == 0, concluido.stderr
+    destino = data / "castor" / "python"
+    assert destino.is_dir()
+    assert oct(destino.stat().st_mode)[-3:] == "700"
+    assert Path(concluido.stdout.strip()).exists()

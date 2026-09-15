@@ -52,12 +52,9 @@ Para quem: quem opera a própria máquina — e o agente de IA que opera junto.
 - **Testes:** pytest
 - **Distribuição:** aplicação Python de arquivo único, publicada como release
   no GitHub. **Não** publica em registro de pacote.
-- **Instalação:** script de bootstrap em shell — o único shell do produto,
-  mantido **abaixo de 130 linhas**. O teto era cem até 13/09/2026, quando a
-  escolha do interpretador entrou e o arquivo chegou a 120 linhas com 93 de
-  mecanismo: caber exigiria apagar todo o "porquê" do único arquivo que a
-  audiência lê para entender a instalação. O teto existe para o shell não virar
-  programa, não para espremer comentário.
+- **Instalação:** script de bootstrap em shell (`instalar.sh`, teto 130
+  linhas) e irmão `instalar-python.sh` (teto 80) quando não há Python ≥3.12.
+  O teto existe para o shell não virar programa.
 
 ## Padrões técnicos
 
