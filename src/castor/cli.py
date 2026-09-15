@@ -160,7 +160,7 @@ def construir_analisador() -> argparse.ArgumentParser:
                                         required=True)
     rodar_ronda = verbos_ronda.add_parser(
         "rodar", help="roda as checagens declaradas e avisa o que piorou")
-    rodar_ronda.add_argument("--seco", action="store_true",
+    rodar_ronda.add_argument("--ensaio", action="store_true",
                              help="roda tudo e não avisa ninguém")
     verbos_ronda.add_parser(
         "estado", help="mostra o resultado da última ronda, sem reexecutar")
@@ -172,8 +172,8 @@ def construir_analisador() -> argparse.ArgumentParser:
                                                     required=True)
     rodar_atualizacao = verbos_atualizacao.add_parser(
         "rodar", help="atualiza os alvos declarados, e o castor por último")
-    rodar_atualizacao.add_argument("--seco", action="store_true",
-                                   help="mostra o que faria, sem fazer")
+    rodar_atualizacao.add_argument("--ensaio", action="store_true",
+                                    help="mostra o que faria, sem fazer")
     verbos_atualizacao.add_parser(
         "estado", help="que versão está em cada máquina, sem atualizar")
 
@@ -659,10 +659,10 @@ def _rodar_ronda(opcoes) -> int:
         print(f"{resultado.nome}\t{'passou' if resultado.passou else 'falhou'}"
               f"\t{resultado.detalhe}")
 
-    if opcoes.seco:
+    if opcoes.ensaio:
         # Não grava: o arquivo é a linha de base da comparação, e sobrescrevê-lo
         # faria a falha em curso deixar de ser avisada na ronda seguinte.
-        print("[seco] nada foi avisado e nada foi gravado.")
+        print("[ensaio] nada foi avisado e nada foi gravado.")
         return CODIGO_DE_RONDA if any(not r.passou for r in resultados) else 0
 
     raiz = _raiz_do_estado()
@@ -768,8 +768,8 @@ def _rodar_atualizacao(opcoes) -> int:
     problemas = 0
     caidas = set()
     for maquina, nome, declarado in _alvos_por_maquina(lido):
-        if opcoes.seco:
-            print(f"[seco] {maquina}\t{nome}\t"
+        if opcoes.ensaio:
+            print(f"[ensaio] {maquina}\t{nome}\t"
                   f"{mod_atualizacao.comando_de(declarado)}")
             continue
         if maquina in caidas:

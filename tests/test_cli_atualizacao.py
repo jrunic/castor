@@ -12,16 +12,16 @@ def bancada(tmp_path):
     manifesto.write_text(json.dumps({
         "chave": str(tmp_path / "chave"),
         "maquinas": {
-            "bancada": {"papel": "principal", "usuario": "ana",
+            "computador-principal": {"papel": "principal", "usuario": "ana",
                         "casa": str(tmp_path), "sistema": "darwin"},
-            "represa": {"papel": "cliente", "usuario": "castor",
+            "computador-auxiliar": {"papel": "cliente", "usuario": "castor",
                         "casa": "/home/castor", "sistema": "linux",
-                        "endereco": "represa.exemplo.test"},
+                        "endereco": "computador-auxiliar.exemplo.test"},
         },
         "atualizacao": {"alvos": {
-            "castor": {"tipo": "castor", "maquinas": ["represa"]},
+            "castor": {"tipo": "castor", "maquinas": ["computador-auxiliar"]},
             "jd-exemplo": {"tipo": "pipx", "pacote": "jd-exemplo",
-                           "maquinas": ["represa"],
+                           "maquinas": ["computador-auxiliar"],
                            "versao": "jd-exemplo --version"},
         }},
     }), encoding="utf-8")
@@ -78,7 +78,7 @@ def test_a_principal_se_atualiza_localmente_e_sem_ssh(bancada, monkeypatch,
     erro de manifesto na primeira máquina que for a principal.
     """
     dados = json.loads(bancada.read_text(encoding="utf-8"))
-    dados["atualizacao"]["alvos"]["castor"]["maquinas"] = ["bancada", "represa"]
+    dados["atualizacao"]["alvos"]["castor"]["maquinas"] = ["computador-principal", "computador-auxiliar"]
     bancada.write_text(json.dumps(dados), encoding="utf-8")
 
     maquina = versoes()
@@ -92,7 +92,7 @@ def test_a_principal_se_atualiza_localmente_e_sem_ssh(bancada, monkeypatch,
 
     assert principal(["--manifesto", str(bancada), "atualizacao", "rodar"]) == 0
     assert any("instalar.sh" in c for c in locais), locais
-    assert "bancada" in capsys.readouterr().out
+    assert "computador-principal" in capsys.readouterr().out
 
 
 def test_alvo_que_nao_responde_depois_sai_onze(bancada, monkeypatch, capsys):
@@ -115,7 +115,7 @@ def test_maquina_fora_do_ar_nao_interrompe_as_outras(bancada, monkeypatch,
                                    "casa": "/home/castor", "sistema": "linux",
                                    "endereco": "moinho.exemplo.test"}
     dados["atualizacao"]["alvos"]["jd-exemplo"]["maquinas"] = ["moinho",
-                                                               "represa"]
+                                                               "computador-auxiliar"]
     bancada.write_text(json.dumps(dados), encoding="utf-8")
 
     def as_vezes_cai(destino, comando, **opcoes):
@@ -130,17 +130,17 @@ def test_maquina_fora_do_ar_nao_interrompe_as_outras(bancada, monkeypatch,
     assert principal(["--manifesto", str(bancada), "atualizacao", "rodar"]) == 11
     saida = capsys.readouterr().out
     assert "inalcançável" in saida
-    assert "represa" in saida  # a outra máquina saiu no relatório
+    assert "computador-auxiliar" in saida  # a outra máquina saiu no relatório
 
 
 def test_seco_mostra_o_que_faria_e_nao_faz(bancada, monkeypatch, capsys):
     maquina = versoes()
     monkeypatch.setattr(conexao, "executar", maquina)
     assert principal(["--manifesto", str(bancada), "atualizacao", "rodar",
-                      "--seco"]) == 0
+                      "--ensaio"]) == 0
     assert not any("pipx upgrade" in c for c in maquina.comandos)
     saida = capsys.readouterr().out
-    assert "[seco]" in saida and "pipx upgrade" in saida
+    assert "[ensaio]" in saida and "pipx upgrade" in saida
 
 
 def test_alvo_com_reiniciar_chama_o_servico(bancada, monkeypatch):

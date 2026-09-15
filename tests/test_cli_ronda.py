@@ -6,9 +6,9 @@ from castor import conexao
 from castor.cli import principal
 
 STATUS_SEM_EXPIRACAO = json.dumps(
-    {"Peer": {"a": {"HostName": "represa", "KeyExpiry": None}}})
+    {"Peer": {"a": {"HostName": "computador-auxiliar", "KeyExpiry": None}}})
 STATUS_COM_EXPIRACAO = json.dumps(
-    {"Peer": {"a": {"HostName": "represa", "KeyExpiry": "2026-12-16T13:48:07Z"}}})
+    {"Peer": {"a": {"HostName": "computador-auxiliar", "KeyExpiry": "2026-12-16T13:48:07Z"}}})
 
 
 @pytest.fixture
@@ -22,22 +22,22 @@ def bancada(tmp_path, monkeypatch):
         "cofre": str(cofre),
         "chave": str(tmp_path / "chave"),
         "maquinas": {
-            "bancada": {"papel": "principal", "usuario": "ana",
+            "computador-principal": {"papel": "principal", "usuario": "ana",
                         "casa": str(tmp_path), "sistema": "darwin"},
-            "represa": {"papel": "cliente", "usuario": "castor",
+            "computador-auxiliar": {"papel": "cliente", "usuario": "castor",
                         "casa": "/home/castor", "sistema": "linux",
-                        "endereco": "represa.exemplo.test"},
+                        "endereco": "computador-auxiliar.exemplo.test"},
         },
         "aviso": {"servidor": "smtp.exemplo.test", "porta": 587,
                   "usuario": "castor@exemplo.test", "de": "de@exemplo.test",
                   "para": "para@exemplo.test", "janela_em_minutos": 60,
                   "variavel": "SMTP_SENHA"},
         "ronda": {"checagens": {
-            "disco": {"tipo": "comando", "maquina": "represa",
+            "disco": {"tipo": "comando", "maquina": "computador-auxiliar",
                       "comando": "test 1 -lt 2"},
-            "sentinela": {"tipo": "servico", "maquina": "represa",
+            "sentinela": {"tipo": "servico", "maquina": "computador-auxiliar",
                           "servico": "sentinela"},
-            "nao-expira": {"tipo": "expiracao", "maquina": "represa"},
+            "nao-expira": {"tipo": "expiracao", "maquina": "computador-auxiliar"},
         }},
     }), encoding="utf-8")
     return manifesto
@@ -138,25 +138,25 @@ def test_checagem_que_falha_sai_dez(bancada, monkeypatch, capsys):
 def test_maquina_inalcancavel_vira_uma_falha_so(bancada, monkeypatch, capsys):
     def cair(destino, comando, **opcoes):
         return conexao.Saida(codigo=255, texto="",
-                             erro="ssh: Could not resolve hostname represa")
+                             erro="ssh: Could not resolve hostname computador-auxiliar")
     monkeypatch.setattr(conexao, "executar", cair)
     com_rede(monkeypatch)
     assert principal(["--manifesto", str(bancada), "ronda", "rodar"]) == 10
 
     linhas = [l for l in capsys.readouterr().out.splitlines() if "\t" in l]
     nomes = [l.split("\t")[0] for l in linhas]
-    assert nomes.count("maquina:represa") == 1
+    assert nomes.count("maquina:computador-auxiliar") == 1
     assert "disco" not in nomes and "sentinela" not in nomes
     # A expiração roda AQUI, então a máquina fora do ar não a impede.
-    assert "expiracao:represa" in nomes
+    assert "expiracao:computador-auxiliar" in nomes
 
 
 def test_seco_nao_monta_correio_nenhum(bancada, monkeypatch, capsys):
     """Medido por estado observável, não por mock do que eu mesmo escrevi."""
     tudo_mal(monkeypatch)
     assert principal(["--manifesto", str(bancada), "ronda", "rodar",
-                      "--seco"]) == 10
-    assert "[seco]" in capsys.readouterr().out
+                      "--ensaio"]) == 10
+    assert "[ensaio]" in capsys.readouterr().out
     assert CorreioDeMentira.enviadas == []
 
 
@@ -170,7 +170,7 @@ def test_seco_nao_grava_e_por_isso_nao_apaga_a_linha_de_base(bancada,
     antes = arquivo.read_text(encoding="utf-8")
 
     tudo_mal(monkeypatch)
-    principal(["--manifesto", str(bancada), "ronda", "rodar", "--seco"])
+    principal(["--manifesto", str(bancada), "ronda", "rodar", "--ensaio"])
     assert arquivo.read_text(encoding="utf-8") == antes
 
 
@@ -186,7 +186,7 @@ def test_checagem_mal_declarada_para_antes_de_rodar_qualquer_coisa(bancada,
                                                                    monkeypatch,
                                                                    capsys):
     dados = json.loads(bancada.read_text(encoding="utf-8"))
-    dados["ronda"]["checagens"]["torta"] = {"maquina": "represa"}
+    dados["ronda"]["checagens"]["torta"] = {"maquina": "computador-auxiliar"}
     bancada.write_text(json.dumps(dados), encoding="utf-8")
     maquina = MaquinaDeMentira()
     monkeypatch.setattr(conexao, "executar", maquina)

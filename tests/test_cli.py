@@ -13,6 +13,13 @@ def executar(*args):
     )
 
 
+def test_ajuda_da_ronda_nao_fala_seco():
+    saida = executar("ronda", "rodar", "--help")
+    assert saida.returncode == 0
+    assert "--ensaio" in saida.stdout
+    assert "--seco" not in saida.stdout
+
+
 def test_ajuda_lista_as_sete_areas():
     saida = executar("--help")
     assert saida.returncode == 0

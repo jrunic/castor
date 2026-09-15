@@ -218,16 +218,16 @@ def test_remover_devolve_a_maquina_ao_estado_anterior(destino):
 def test_a_ronda_roda_contra_a_maquina_real():
     """As três naturezas de checagem, contra a VPS. Sempre --seco: a bancada
     não manda e-mail nem mexe na linha de base de nenhuma ronda real."""
-    seco = castor("ronda", "rodar", "--seco")
+    seco = castor("ronda", "rodar", "--ensaio")
     assert seco.returncode == 10, seco.stdout + seco.stderr
     print(f"\nronda seca:\n{seco.stdout.strip()}")
-    assert "[seco]" in seco.stdout
+    assert "[ensaio]" in seco.stdout
 
 
 @entrega
 def test_a_expiracao_e_lida_da_principal_e_bate_com_a_realidade():
     """A máquina de bancada teve a expiração desativada no plano 3."""
-    seco = castor("ronda", "rodar", "--seco")
+    seco = castor("ronda", "rodar", "--ensaio")
     linha = next(l for l in seco.stdout.splitlines()
                  if l.startswith("expiracao:"))
     assert "passou" in linha, linha
@@ -236,7 +236,7 @@ def test_a_expiracao_e_lida_da_principal_e_bate_com_a_realidade():
 
 @entrega
 def test_checagem_de_comando_que_passa_e_que_falha_na_maquina_real():
-    seco = castor("ronda", "rodar", "--seco")
+    seco = castor("ronda", "rodar", "--ensaio")
     linhas = {l.split("\t")[0]: l for l in seco.stdout.splitlines() if "\t" in l}
     assert "passou" in linhas["disco-da-vps"], linhas["disco-da-vps"]
     assert "falhou" in linhas["sempre-falha"], linhas["sempre-falha"]
@@ -245,7 +245,7 @@ def test_checagem_de_comando_que_passa_e_que_falha_na_maquina_real():
 
 @entrega
 def test_o_seco_da_atualizacao_mostra_o_que_faria():
-    seco = castor("atualizacao", "rodar", "--seco")
+    seco = castor("atualizacao", "rodar", "--ensaio")
     assert seco.returncode == 0, seco.stderr
     print(f"\n{seco.stdout.strip()}")
     assert "instalar.sh" in seco.stdout
