@@ -124,3 +124,27 @@ def test_garantir_com_binario_ja_rodando_nao_instala():
         sistema="darwin", which=which, executor=executor, tem_sudo=False,
         esperar_login=lambda url: None)
     assert chamadas == [["/usr/bin/tailscale", "status", "--json"]]
+
+
+def test_o_up_leva_teto_de_tempo():
+    visto = {}
+    n = {"status": 0}
+
+    def which(nome):
+        return "/usr/bin/tailscale" if nome == "tailscale" else None
+
+    def executor(cmd, **kw):
+        if "up" in cmd:
+            visto["timeout"] = kw.get("timeout")
+            return _Saida(stderr=SUBIDA)
+        n["status"] += 1
+        if n["status"] == 1:
+            return _Saida(stdout='{"BackendState": "NeedsLogin"}')
+        return _Saida(stdout=STATUS)
+
+    urls = []
+    rede.garantir_na_principal(
+        sistema="linux", which=which, executor=executor, tem_sudo=True,
+        esperar_login=urls.append)
+    assert visto.get("timeout") == 20
+    assert urls and urls[0].startswith("https://login.tailscale.com/")

@@ -27,9 +27,11 @@ def garantir_rede(**_):
 
 
 def _ler(pergunta: str) -> str:
-    sys.stdout.write(pergunta)
-    sys.stdout.flush()
-    return entrada.readline().strip()
+    print(pergunta, flush=True)
+    linha = entrada.readline()
+    if linha == "":
+        raise EOFError(f"entrada acabou em: {pergunta}")
+    return linha.strip()
 
 
 def _perguntar_smtp() -> dict | None:
@@ -71,9 +73,13 @@ def _gravar_cofre(smtp: dict) -> Path:
 
 
 def rodar(cadastro: Path) -> int:
-    criar = _ler("criar chave (c) ou caminho da existente: ")
-    nome = _ler("nome da principal: ") or socket.gethostname()
-    smtp = _perguntar_smtp()
+    try:
+        criar = _ler("criar chave (c) ou caminho da existente: ")
+        nome = _ler("nome da principal: ") or socket.gethostname()
+        smtp = _perguntar_smtp()
+    except EOFError as erro:
+        print(str(erro), file=sys.stderr)
+        return 1
     try:
         garantir_rede()
     except ErroDeRede as erro:

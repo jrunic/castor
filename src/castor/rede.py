@@ -14,6 +14,7 @@ import json
 import re
 import shutil
 import socket
+import subprocess
 
 URL_DE_LOGIN = re.compile(r"https://login\.tailscale\.com/\S+")
 
@@ -99,9 +100,20 @@ def garantir_na_principal(*, sistema, which, executor, tem_sudo, esperar_login) 
     estado = executor([binario, "status", "--json"], capture_output=True, text=True)
     if esta_rodando(estado.stdout):
         return
-    saida_up = executor(montar_subida(socket.gethostname()),
-                        capture_output=True, text=True)
-    texto = (saida_up.stdout or "") + (saida_up.stderr or "")
+    cmd_up = montar_subida(socket.gethostname())
+    if sistema == "linux" and tem_sudo:
+        cmd_up = ["sudo", *cmd_up]
+    try:
+        saida_up = executor(cmd_up, capture_output=True, text=True, timeout=20)
+        texto = (saida_up.stdout or "") + (saida_up.stderr or "")
+    except subprocess.TimeoutExpired as erro:
+        stdout = erro.stdout or ""
+        stderr = erro.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", "replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", "replace")
+        texto = stdout + stderr
     url = extrair_url_de_login(texto)
     if not url:
         raise ErroDeRede("o tailscale up nao deu URL de login.")
