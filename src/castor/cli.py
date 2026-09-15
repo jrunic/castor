@@ -11,6 +11,7 @@ from pathlib import Path
 import castor
 from castor import atualizacao as mod_atualizacao
 from castor import cadastro as mod_cadastro
+from castor import configurar as mod_configurar
 from castor import chaves as mod_chaves
 from castor import cliente as mod_cliente
 from castor import cofre as mod_cofre
@@ -45,6 +46,7 @@ def construir_analisador() -> argparse.ArgumentParser:
              "XDG cadastro.json / castor.json)",
     )
     areas = analisador.add_subparsers(dest="area", metavar="area")
+    areas.add_parser("configurar", help="prepara esta máquina como principal")
 
     chave = areas.add_parser("chave", help="área chave — o acesso às clientes")
     verbos_chave = chave.add_subparsers(dest="verbo", metavar="verbo",
@@ -1120,6 +1122,8 @@ def principal(argumentos: list[str] | None = None) -> int:
         analisador.print_help()
         return 1
     try:
+        if opcoes.area == "configurar":
+            return mod_configurar.rodar(Path(opcoes.cadastro))
         if opcoes.area == "chave":
             return _despachar_chave(opcoes)
         if opcoes.area == "maquina":
