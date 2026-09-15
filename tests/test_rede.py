@@ -45,7 +45,7 @@ def test_sem_url_devolve_nada_em_vez_de_inventar():
 
 def test_subida_leva_o_nome_da_maquina():
     assert rede.montar_subida("computador-auxiliar") == [
-        "tailscale", "up", "--json", "--timeout=20s", "--reset",
+        "tailscale", "up", "--json", "--timeout=20s",
         "--hostname", "computador-auxiliar"]
 
 

@@ -28,7 +28,7 @@ class NoDesconhecido(ErroDeRede):
 
 
 def montar_subida(nome_na_rede: str) -> list[str]:
-    return ["tailscale", "up", "--json", "--timeout=20s", "--reset",
+    return ["tailscale", "up", "--json", "--timeout=20s",
             "--hostname", nome_na_rede]
 
 
