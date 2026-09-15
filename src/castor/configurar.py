@@ -21,10 +21,48 @@ def _ler(pergunta: str) -> str:
     return entrada.readline().strip()
 
 
+def _perguntar_smtp() -> dict | None:
+    if _ler("aviso por e-mail (s/n): ").lower() not in ("s", "sim"):
+        return None
+    provedor = _ler("google (g) ou outro (o): ").lower()
+    if provedor in ("g", "google"):
+        print("senha de app: https://myaccount.google.com/apppasswords")
+        email = _ler("e-mail: ")
+        senha = _ler("senha de app: ")
+        return {
+            "servidor": "smtp.gmail.com", "porta": 587, "usuario": email,
+            "de": email, "para": email, "senha": senha,
+        }
+    servidor = _ler("servidor SMTP: ")
+    porta = int(_ler("porta: ") or "587")
+    usuario = _ler("usuario: ")
+    senha = _ler("senha: ")
+    de = _ler("remetente (vazio = usuario): ") or usuario
+    para = _ler("destinatario (vazio = remetente): ") or de
+    return {
+        "servidor": servidor, "porta": porta, "usuario": usuario,
+        "de": de, "para": para, "senha": senha,
+    }
+
+
+def _gravar_cofre(smtp: dict) -> Path:
+    caminho = Path.home() / ".config" / "castor" / "cofre"
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    linhas = (
+        f"SMTP_SERVIDOR={smtp['servidor']}\n"
+        f"SMTP_PORTA={smtp['porta']}\n"
+        f"SMTP_USUARIO={smtp['usuario']}\n"
+        f"SMTP_SENHA={smtp['senha']}\n"
+    )
+    caminho.write_text(linhas, encoding="utf-8")
+    caminho.chmod(0o600)
+    return caminho
+
+
 def rodar(cadastro: Path) -> int:
     criar = _ler("criar chave (c) ou caminho da existente: ")
     nome = _ler("nome da principal: ") or socket.gethostname()
-    _ler("aviso por e-mail (s/n): ")
+    smtp = _perguntar_smtp()
     try:
         garantir_rede()
     except ErroDeRede as erro:
@@ -45,6 +83,25 @@ def rodar(cadastro: Path) -> int:
     destino = origem_para_gravar(cadastro) if cadastro.name == "castor.json" else cadastro
     lido = mod_manifesto.ler_ou_vazio(destino)
     lido = mod_manifesto.anotar(lido, "chave", str(privada))
+    if smtp:
+        cofre = _gravar_cofre(smtp)
+        env = "$HOME/.config/castor/correio.env"
+        lido = mod_manifesto.anotar(lido, "cofre", str(cofre))
+        lido = mod_manifesto.anotar(lido, "servicos", {
+            "correio": {
+                "chaves": ["SMTP_SERVIDOR", "SMTP_PORTA", "SMTP_USUARIO",
+                           "SMTP_SENHA"],
+                "destino": env,
+                "maquinas": [],
+            }
+        })
+        lido = mod_manifesto.anotar(lido, "aviso", {
+            "servico": "correio",
+            "servidor": smtp["servidor"], "porta": smtp["porta"],
+            "usuario": smtp["usuario"], "de": smtp["de"], "para": smtp["para"],
+            "janela_em_minutos": 60,
+            "arquivo_de_segredo": env, "variavel": "SMTP_SENHA",
+        })
     maquina = mod_manifesto.Maquina(
         nome=nome, usuario=medido.usuario, casa=medido.casa,
         sistema=medido.sistema, papel="principal", python=medido.python,
