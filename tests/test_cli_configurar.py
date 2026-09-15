@@ -22,6 +22,9 @@ def test_configurar_grava_depois_da_rede_ok(tmp_path, monkeypatch, capsys):
     assert dados["maquinas"]["computador-principal"]["papel"] == "principal"
     assert "aviso" not in dados
     assert not (tmp_path / ".config" / "castor" / "cofre").exists()
+    saida = capsys.readouterr()
+    assert "principal configurada" in saida.out
+    assert "cadastro.json" in saida.out
 
 
 def test_configurar_google_grava_cofre_e_nao_imprime_senha(tmp_path, monkeypatch, capsys):
@@ -73,4 +76,6 @@ def test_configurar_sem_rede_nao_grava(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("castor.configurar.garantir_rede", garantir)
     assert principal(["configurar"]) == 1
     assert not (tmp_path / "cadastro.json").exists()
-    assert "sudo" in capsys.readouterr().err
+    erro = capsys.readouterr().err
+    assert "sudo" in erro
+    assert "não terminou" in erro

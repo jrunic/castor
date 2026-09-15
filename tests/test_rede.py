@@ -120,6 +120,22 @@ def test_instalar_linux_sem_apt_recusa():
     assert "apt" in str(erro.value)
 
 
+def test_binario_e_achado_no_caminho_da_aplicacao_quando_path_nao_tem():
+    """No macOS o Tailscale vive fora do PATH do ssh não-interativo."""
+
+    def existe(caminho):
+        return str(caminho).endswith("/Applications/Tailscale.app/Contents/MacOS/Tailscale")
+
+    achado = rede.achar_binario(which=lambda nome: None, existe=existe)
+    assert achado == "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+
+
+def test_binario_do_path_vence_os_caminhos_conhecidos():
+    assert rede.achar_binario(
+        which=lambda nome: "/usr/bin/tailscale" if nome == "tailscale" else None,
+        existe=lambda caminho: False) == "/usr/bin/tailscale"
+
+
 def test_garantir_com_binario_ja_rodando_nao_instala():
     chamadas = []
 

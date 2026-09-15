@@ -19,10 +19,16 @@ def garantir_rede(**_):
     from castor import rede as mod_rede
     sistema = "darwin" if platform.system() == "Darwin" else platform.system().lower()
     tem_sudo = os.geteuid() == 0 or bool(shutil.which("sudo"))
+
+    def which(nome):
+        if nome == "tailscale":
+            return mod_rede.achar_binario(which=shutil.which)
+        return shutil.which(nome)
+
     def esperar(url):
         print(f"abra no navegador: {url}")
     mod_rede.garantir_na_principal(
-        sistema=sistema, which=shutil.which, executor=subprocess.run,
+        sistema=sistema, which=which, executor=subprocess.run,
         tem_sudo=tem_sudo, esperar_login=esperar)
 
 
@@ -83,7 +89,7 @@ def rodar(cadastro: Path) -> int:
     try:
         garantir_rede()
     except ErroDeRede as erro:
-        print(str(erro), file=sys.stderr)
+        print(f"a configuração não terminou: {erro}", file=sys.stderr)
         return 1
     if criar == "c":
         privada = mod_chaves.criar(mod_chaves.caminho_padrao())
@@ -125,5 +131,10 @@ def rodar(cadastro: Path) -> int:
     )
     from dataclasses import replace
     lido = replace(lido, origem=destino)
-    mod_manifesto.gravar(mod_manifesto.acrescentar(lido, maquina, substituir=True))
+    gravado = mod_manifesto.gravar(mod_manifesto.acrescentar(lido, maquina, substituir=True))
+    resumo = ["chave", "cadastro", "rede"]
+    if smtp:
+        resumo.append("aviso por e-mail")
+    print(f"principal configurada: {', '.join(resumo)}. "
+          f"Cadastro em {gravado}.")
     return 0

@@ -958,18 +958,8 @@ def _adicionar_maquina(opcoes) -> int:
     return 0
 
 
-CAMINHOS_DO_TAILSCALE = ("/usr/local/bin/tailscale", "/opt/homebrew/bin/tailscale",
-                         "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
-
-
 def _binario_do_tailscale() -> str | None:
-    achado = shutil.which("tailscale")
-    if achado:
-        return achado
-    for caminho in CAMINHOS_DO_TAILSCALE:
-        if Path(caminho).exists():
-            return caminho
-    return None
+    return mod_rede.achar_binario(which=shutil.which)
 
 
 def _status_da_rede(binario: str) -> str:

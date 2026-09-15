@@ -15,6 +15,7 @@ import re
 import shutil
 import socket
 import subprocess
+from pathlib import Path
 
 URL_DE_LOGIN = re.compile(r"https://login\.tailscale\.com/\S+")
 
@@ -81,6 +82,21 @@ def esta_rodando(texto_json: str) -> bool:
         return False
 
 
+CAMINHOS_DO_BINARIO = ("/usr/local/bin/tailscale", "/opt/homebrew/bin/tailscale",
+                       "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
+
+
+def achar_binario(which=shutil.which, existe=Path.exists) -> str | None:
+    """O PATH do ssh não-interativo não é o PATH de quem instalou o app."""
+    achado = which("tailscale")
+    if achado:
+        return achado
+    for caminho in CAMINHOS_DO_BINARIO:
+        if existe(Path(caminho)):
+            return caminho
+    return None
+
+
 def instalar_cliente(*, sistema: str, executor, tem_sudo: bool, which=shutil.which) -> None:
     if not tem_sudo:
         raise ErroDeRede("preciso de sudo uma vez para instalar o Tailscale.")
@@ -98,11 +114,11 @@ def instalar_cliente(*, sistema: str, executor, tem_sudo: bool, which=shutil.whi
 
 
 def garantir_na_principal(*, sistema, which, executor, tem_sudo, esperar_login) -> None:
-    binario = which("tailscale")
+    binario = achar_binario(which=which)
     if not binario:
         instalar_cliente(sistema=sistema, executor=executor, tem_sudo=tem_sudo,
                          which=which)
-        binario = which("tailscale")
+        binario = achar_binario(which=which)
         if not binario:
             raise ErroDeRede(
                 "instalei o Tailscale mas o comando nao apareceu no PATH.")
