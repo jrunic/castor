@@ -18,6 +18,8 @@ tags: [changelog]
 - Sem Python ≥3.12, o instalador extrai um tarball 3.14 no XDG data.
 - `castor configurar` prepara a principal (chave, SMTP, Tailscale) e só grava
   depois da rede de pé.
+- `maquina preparar` instala Python 3.14 no XDG da conta de serviço se ela
+  não tiver 3.12; o cadastro grava esse interpretador.
 
 ## 0.2.1 — 13/09/2026
 

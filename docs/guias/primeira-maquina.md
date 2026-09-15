@@ -59,12 +59,13 @@ O comando vai, em ordem:
 
 1. **Instalar sua chave para o usuário inicial.** É o único momento em que a
    senha é pedida — ela aparece no seu terminal, digitada por você.
-2. **Medir a máquina:** usuário, diretório, sistema, relógio, fuso e versão do
-   Python.
+2. **Medir a máquina:** usuário, diretório, sistema, relógio e fuso. A versão
+   do Python do usuário inicial **não** recusa o preparo.
 3. **Criar o usuário de serviço** (`castor`, por padrão), instalar a chave para
    ele e configurar o sudo. Uma senha pedida, uma vez.
 4. **Provar a chave nova** numa conexão separada, antes de depender dela.
-5. **Instalar o castor** na cliente.
+5. **Python na conta de serviço.** Se ela não tiver 3.12 ou mais novo, instala
+   o 3.14 no XDG dela. Só então instala o castor, cravando esse interpretador.
 6. **Instalar o Tailscale e ligar a máquina à sua rede privada.** Ele imprime um
    endereço; abra no navegador **desta** máquina, onde você já está logado no
    Tailscale, e autorize. Um clique.
@@ -218,7 +219,7 @@ castor servico reiniciar sentinela --maquina computador-auxiliar
 | `recusou a chave` | rode `castor chave mostrar` e confira se ela está no `authorized_keys` daquele usuário |
 | `a identidade de ... mudou` | a máquina foi reinstalada — ou alguém está no meio do caminho. Confirme antes de apagar a linha de `~/.ssh/known_hosts` |
 | `o castor não está instalado` | rode `castor maquina preparar` |
-| `o python desta máquina é 3.9` | instale um Python 3.12 ou mais novo e repita |
+| `o python desta máquina é 3.9` | o passo na conta de serviço falhou; o `preparar` tenta o 3.14 sozinho — se repetir, a máquina não baixa o tarball |
 | `a expiração de ... continua ativa` | desative no painel do Tailscale e rode de novo — a conferência não mente |
 | `o serviço ... ficou 'failed'` | `castor servico registro <nome> --maquina <máquina>` diz o que ele falou ao morrer |
 | `o cofre ... não tem <CHAVE>` | acrescente a linha no cofre da principal e rode de novo |

@@ -133,11 +133,11 @@ primeiro comando que rodar.
 | `acesso_inicial` | — | a conexão por chave responde o usuário inicial |
 | `identidade` | `acesso_inicial` | a medição voltou preenchida |
 | `relogio` | — | desvio de até 120 s contra esta máquina |
-| `python` | — | 3.12 ou mais novo |
 | `usuario_de_servico` | — | o usuário existe |
 | `provar_chave` | — | a conexão como usuário de serviço responde o nome dele |
 | `sudo` | `provar_chave` | `sudo -n true` passa |
-| `instalar_castor` | `provar_chave` | `castor --versao` responde |
+| `python_da_conta` | `provar_chave`, `sudo` | 3.12 ou mais novo **nessa conta**; instala 3.14 no XDG dela se faltar |
+| `instalar_castor` | `provar_chave`, `python_da_conta` | `castor --versao` responde |
 | `rede` | `provar_chave`, `sudo` | — |
 | `expiracao` | — | conduzido pelo comando, conferido na principal |
 | `encerrar_acesso_inicial` | `provar_chave`, `sudo`, `instalar_castor` | **não roda nesta versão** |
