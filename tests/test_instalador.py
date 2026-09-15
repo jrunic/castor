@@ -339,6 +339,7 @@ def test_sem_nenhum_python_bom_continua_recusando(tmp_path):
     destino = tmp_path / "bin"
     concluido = instalar(tmp_path, PATH=f"{so_velho}:/usr/bin:/bin",
                          CASTOR_ARTEFATO="/nao/importa",
+                         CASTOR_PYTHON_URL="http://127.0.0.1:1/nao",
                          CASTOR_DESTINO=str(destino))
     assert concluido.returncode != 0
     assert not destino.exists()
@@ -372,4 +373,28 @@ def test_o_irmao_extrai_tarball_em_xdg_data(tmp_path):
     destino = data / "castor" / "python"
     assert destino.is_dir()
     assert oct(destino.stat().st_mode)[-3:] == "700"
+    assert Path(concluido.stdout.strip()).exists()
+
+
+def test_o_irmao_baixa_quando_a_url_esta_declarada(tmp_path):
+    tar = _tarball_python(tmp_path)
+    mapa = {
+        "/cpython.tgz": tar.read_bytes(),
+        "/cpython.tgz.sha256": (tmp_path / "cpython.tgz.sha256").read_bytes(),
+    }
+    servidor, _ = servidor_de_arquivos(mapa)
+    url = f"http://127.0.0.1:{servidor.server_port}/cpython.tgz"
+    data = tmp_path / "data"
+    try:
+        concluido = subprocess.run(
+            ["sh", str(IRMAO)],
+            env={**os.environ, "XDG_DATA_HOME": str(data),
+                 "CASTOR_PYTHON_URL": url,
+                 "CASTOR_PYTHON_ARTEFATO": ""},
+            capture_output=True, text=True,
+        )
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+    assert concluido.returncode == 0, concluido.stderr
     assert Path(concluido.stdout.strip()).exists()
