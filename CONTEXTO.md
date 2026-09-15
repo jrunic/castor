@@ -151,10 +151,13 @@ docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 ## Estado atual
 
-**As sete áreas de pé**, com suíte verde: `chave`, `maquina`, `segredos`,
-`servico`, `rotina`, `ronda` e `atualizacao`, mais o instalador de bootstrap.
-Última release publicada: **0.2.0**, de 13/09/2026. Toda mudança de
+**As sete áreas de pé**, mais `castor configurar` na raiz. Superfície: cadastro
+(`--cadastro`, `CASTOR_CADASTRO`), `--ensaio`. Sem Python ≥3.12 o instalador
+põe 3.14 no XDG data. Última release publicada: **0.2.0**. Toda mudança de
 comportamento entra no `CHANGELOG.md` no mesmo commit.
+
+Antes de aceitar o ciclo `configurar-principal`: medir `castor configurar`
+nesta máquina. O download do 3.14 contra o GitHub não passou pela suíte.
 
 ## Referências
 
