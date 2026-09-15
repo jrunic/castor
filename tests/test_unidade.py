@@ -6,7 +6,7 @@ from castor.unidade import DeclaracaoInvalida
 
 DECLARADO = {
     "comando": "$HOME/.local/bin/sentinela --vigiar",
-    "descricao": "Sentinela da represa",
+    "descricao": "Sentinela do computador-auxiliar",
     "destino": "$HOME/.config/castor/sentinela.env",
 }
 

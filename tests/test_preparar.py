@@ -109,7 +109,7 @@ class ConexaoDeMentira:
 
 def _roteiro(executor, contexto=None, agora=lambda: 1789000000):
     return preparar.montar_roteiro(
-        nome="represa", endereco="represa.exemplo.test",
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
         usuario_inicial="castor-inicial", usuario_de_servico="castor",
         chave_publica="ssh-ed25519 AAAA... ana",
         contexto=contexto if contexto is not None else {}, executor=executor,
@@ -216,7 +216,7 @@ def test_com_chave_inicial_o_primeiro_acesso_vai_por_chave_e_em_lote():
     """
     executor = ConexaoDeMentira()
     roteiro = {p.nome: p for p in preparar.montar_roteiro(
-        nome="represa", endereco="represa.exemplo.test",
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
         usuario_inicial="ubuntu", usuario_de_servico="castor",
         chave_publica="ssh-ed25519 AAAA... ana", contexto={},
         chave_inicial="/tmp/chave-da-nuvem", executor=executor)}
@@ -229,7 +229,7 @@ def test_com_chave_inicial_o_primeiro_acesso_vai_por_chave_e_em_lote():
 def test_a_chave_inicial_acompanha_os_comandos_do_usuario_inicial():
     executor = ConexaoDeMentira()
     roteiro = {p.nome: p for p in preparar.montar_roteiro(
-        nome="represa", endereco="represa.exemplo.test",
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
         usuario_inicial="ubuntu", usuario_de_servico="castor",
         chave_publica="ssh-ed25519 AAAA... ana", contexto={},
         chave_inicial="/tmp/chave-da-nuvem", executor=executor)}
@@ -285,7 +285,7 @@ def test_a_prova_do_acesso_inicial_usa_a_chave_do_castor_e_nao_a_da_nuvem():
     """
     executor = ConexaoDeMentira()
     roteiro = {p.nome: p for p in preparar.montar_roteiro(
-        nome="represa", endereco="represa.exemplo.test",
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
         usuario_inicial="ubuntu", usuario_de_servico="castor",
         chave_publica="ssh-ed25519 AAAA... ana",
         contexto={"chave": Path("/tmp/chave-do-castor")},

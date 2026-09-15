@@ -12,7 +12,7 @@ from castor.conexao import (
     Saida,
 )
 
-DESTINO = Destino(usuario="castor", endereco="represa.exemplo.test",
+DESTINO = Destino(usuario="castor", endereco="computador-auxiliar.exemplo.test",
                   chave=Path("/tmp/chave-de-teste"))
 
 
@@ -35,11 +35,11 @@ def test_comando_leva_chave_lote_e_tempo_limite():
     assert "ConnectTimeout=10" in comando
     assert "/tmp/chave-de-teste" in comando
     assert "IdentitiesOnly=yes" in comando
-    assert comando[-2:] == ["castor@represa.exemplo.test", "id -un"]
+    assert comando[-2:] == ["castor@computador-auxiliar.exemplo.test", "id -un"]
 
 
 def test_porta_diferente_da_padrao_entra_no_comando():
-    destino = Destino(usuario="castor", endereco="represa.exemplo.test", porta=2222)
+    destino = Destino(usuario="castor", endereco="computador-auxiliar.exemplo.test", porta=2222)
     assert "-p" in conexao.montar(destino, "true")
 
 
@@ -75,15 +75,15 @@ def test_em_lote_a_saida_volta_inteira():
 
 def test_host_que_nao_resolve_e_rede_inalcancavel():
     saida = Saida(codigo=255, texto="",
-                  erro="ssh: Could not resolve hostname represa.exemplo.test")
+                  erro="ssh: Could not resolve hostname computador-auxiliar.exemplo.test")
     with pytest.raises(RedeInalcancavel) as erro:
         conexao.conferir(saida, DESTINO)
-    assert "represa.exemplo.test" in str(erro.value)
+    assert "computador-auxiliar.exemplo.test" in str(erro.value)
 
 
 def test_chave_negada_e_chave_recusada():
     saida = Saida(codigo=255, texto="",
-                  erro="castor@represa: Permission denied (publickey).")
+                  erro="castor@computador-auxiliar: Permission denied (publickey).")
     with pytest.raises(ChaveRecusada) as erro:
         conexao.conferir(saida, DESTINO)
     assert "castor chave mostrar" in str(erro.value)

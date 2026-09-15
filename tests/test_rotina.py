@@ -150,7 +150,7 @@ def test_correio_fora_do_ar_nao_engole_o_codigo_da_rotina(tmp_path):
         "limpeza", "echo falhei >&2; exit 2",
         registro=tmp_path / "registro.log", trava=tmp_path / "trava",
         remetente=remetente, supressor=supressor, de="a@t.test", para="b@t.test",
-        maquina="represa", agora=1000.0)
+        maquina="computador-auxiliar", agora=1000.0)
 
     assert remetente.tentou
     assert resultado.codigo == 2
@@ -163,7 +163,7 @@ def test_falha_no_envio_nao_marca_o_alarme_como_avisado(tmp_path):
     rodar("limpeza", "exit 2",
                  registro=tmp_path / "registro.log", trava=tmp_path / "trava",
                  remetente=RemetenteQueCai(), supressor=supressor,
-                 de="a@t.test", para="b@t.test", maquina="represa", agora=1000.0)
+                 de="a@t.test", para="b@t.test", maquina="computador-auxiliar", agora=1000.0)
 
     assert supressor.pode_avisar("rotina.limpeza.falhou", agora=1001.0)
 

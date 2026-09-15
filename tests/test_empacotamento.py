@@ -29,7 +29,7 @@ def test_pacote_propaga_codigo_de_saida(tmp_path):
     # falha que nao depende de nenhuma area estar incompleta.
     alvo = construir(tmp_path)
     saida = subprocess.run(
-        [sys.executable, str(alvo), "--manifesto",
+        [sys.executable, str(alvo), "--cadastro",
          str(tmp_path / "nao-existe.json"), "maquina", "listar"],
         capture_output=True, text=True)
     assert saida.returncode == 1

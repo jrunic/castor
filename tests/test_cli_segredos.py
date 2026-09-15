@@ -18,11 +18,11 @@ def bancada(tmp_path):
         "cofre": str(cofre),
         "chave": str(tmp_path / "chave"),
         "maquinas": {
-            "bancada": {"papel": "principal", "usuario": "ana",
+            "computador-principal": {"papel": "principal", "usuario": "ana",
                         "casa": str(tmp_path), "sistema": "linux"},
-            "represa": {"papel": "cliente", "usuario": "castor",
+            "computador-auxiliar": {"papel": "cliente", "usuario": "castor",
                         "casa": "/home/castor", "sistema": "linux",
-                        "endereco": "represa.exemplo.test"},
+                        "endereco": "computador-auxiliar.exemplo.test"},
         },
         "servicos": {"correio": {
             "chaves": ["SMTP_SERVIDOR", "SMTP_SENHA"],
@@ -35,8 +35,8 @@ def test_gerar_grava_o_arquivo_do_servico_com_permissao_restrita(bancada,
                                                                  tmp_path,
                                                                  capsys):
     destino = tmp_path / "correio.env"
-    assert principal(["--manifesto", str(bancada), "segredos", "gerar",
-                      "correio", "--maquina", "bancada",
+    assert principal(["--cadastro", str(bancada), "segredos", "gerar",
+                      "correio", "--maquina", "computador-principal",
                       "--destino", str(destino)]) == 0
     assert destino.stat().st_mode & 0o077 == 0
     assert SENHA_SINTETICA in destino.read_text(encoding="utf-8")
@@ -45,8 +45,8 @@ def test_gerar_grava_o_arquivo_do_servico_com_permissao_restrita(bancada,
 
 def test_gerar_sem_destino_recusa_em_vez_de_imprimir(bancada, capsys):
     """O material nunca ensina a imprimir segredo no terminal."""
-    assert principal(["--manifesto", str(bancada), "segredos", "gerar",
-                      "correio", "--maquina", "bancada"]) == 1
+    assert principal(["--cadastro", str(bancada), "segredos", "gerar",
+                      "correio", "--maquina", "computador-principal"]) == 1
     saida = capsys.readouterr()
     assert SENHA_SINTETICA not in saida.out
     assert "--destino" in saida.err
@@ -56,8 +56,8 @@ def test_chave_que_falta_no_cofre_nomeia_a_chave(bancada, tmp_path, capsys):
     dados = json.loads(bancada.read_text(encoding="utf-8"))
     dados["servicos"]["correio"]["chaves"].append("TOKEN_AUSENTE")
     bancada.write_text(json.dumps(dados), encoding="utf-8")
-    assert principal(["--manifesto", str(bancada), "segredos", "gerar",
-                      "correio", "--maquina", "bancada",
+    assert principal(["--cadastro", str(bancada), "segredos", "gerar",
+                      "correio", "--maquina", "computador-principal",
                       "--destino", str(tmp_path / "x.env")]) == 1
     assert "TOKEN_AUSENTE" in capsys.readouterr().err
 
@@ -65,8 +65,8 @@ def test_chave_que_falta_no_cofre_nomeia_a_chave(bancada, tmp_path, capsys):
 def test_cofre_frouxo_recusa_e_nao_grava(bancada, tmp_path, capsys):
     (tmp_path / "cofre").chmod(0o644)
     destino = tmp_path / "correio.env"
-    assert principal(["--manifesto", str(bancada), "segredos", "gerar",
-                      "correio", "--maquina", "bancada",
+    assert principal(["--cadastro", str(bancada), "segredos", "gerar",
+                      "correio", "--maquina", "computador-principal",
                       "--destino", str(destino)]) == 1
     assert not destino.exists()
     assert "chmod 600" in capsys.readouterr().err
@@ -77,23 +77,26 @@ def test_manifesto_sem_cofre_declarado_diz_o_que_acrescentar(bancada, tmp_path,
     dados = json.loads(bancada.read_text(encoding="utf-8"))
     del dados["cofre"]
     bancada.write_text(json.dumps(dados), encoding="utf-8")
-    assert principal(["--manifesto", str(bancada), "segredos", "gerar",
-                      "correio", "--maquina", "bancada",
+    assert principal(["--cadastro", str(bancada), "segredos", "gerar",
+                      "correio", "--maquina", "computador-principal",
                       "--destino", str(tmp_path / "x.env")]) == 1
     assert "'cofre'" in capsys.readouterr().err
 
 
-def test_o_manifesto_padrao_e_o_da_configuracao_do_usuario(monkeypatch):
+def test_o_cadastro_padrao_e_o_da_configuracao_do_usuario(monkeypatch):
     """O cron da cliente não tem diretório de trabalho que alguém controle."""
-    monkeypatch.delenv("CASTOR_MANIFESTO", raising=False)
-    opcoes = construir_analisador().parse_args(["maquina", "listar"])
-    assert opcoes.manifesto.endswith(".config/castor/castor.json")
+    monkeypatch.delenv("CASTOR_CADASTRO", raising=False)
+    from castor.cadastro import resolver
+    caminho = resolver()
+    assert caminho.parent.name == "castor"
+    assert caminho.name in ("cadastro.json", "castor.json")
 
 
 def test_a_variavel_de_ambiente_continua_mandando(monkeypatch):
-    monkeypatch.setenv("CASTOR_MANIFESTO", "/outro/lugar.json")
-    opcoes = construir_analisador().parse_args(["maquina", "listar"])
-    assert opcoes.manifesto == "/outro/lugar.json"
+    monkeypatch.setenv("CASTOR_CADASTRO", "/outro/lugar.json")
+    from pathlib import Path
+    from castor.cadastro import resolver
+    assert resolver() == Path("/outro/lugar.json")
 
 
 from castor import conexao  # noqa: E402
@@ -113,8 +116,8 @@ class EnvioDeMentira:
 def test_enviar_grava_o_arquivo_do_servico_na_cliente(bancada, monkeypatch):
     envio = EnvioDeMentira()
     monkeypatch.setattr(conexao, "executar", envio)
-    assert principal(["--manifesto", str(bancada), "segredos", "enviar",
-                      "correio", "--maquina", "represa"]) == 0
+    assert principal(["--cadastro", str(bancada), "segredos", "enviar",
+                      "correio", "--maquina", "computador-auxiliar"]) == 0
     comandos = [c for c, _ in envio.gravacoes]
     assert any("/home/castor/.config/castor/correio.env" in c for c in comandos)
     assert any(e and SENHA_SINTETICA in e for _, e in envio.gravacoes)
@@ -123,8 +126,8 @@ def test_enviar_grava_o_arquivo_do_servico_na_cliente(bancada, monkeypatch):
 def test_enviar_leva_junto_o_manifesto_da_cliente(bancada, monkeypatch):
     envio = EnvioDeMentira()
     monkeypatch.setattr(conexao, "executar", envio)
-    principal(["--manifesto", str(bancada), "segredos", "enviar", "correio",
-               "--maquina", "represa"])
+    principal(["--cadastro", str(bancada), "segredos", "enviar", "correio",
+               "--maquina", "computador-auxiliar"])
     comandos = [c for c, _ in envio.gravacoes]
     assert any("/home/castor/.config/castor/castor.json" in c for c in comandos)
 
@@ -132,8 +135,8 @@ def test_enviar_leva_junto_o_manifesto_da_cliente(bancada, monkeypatch):
 def test_o_cofre_nunca_atravessa(bancada, monkeypatch):
     envio = EnvioDeMentira()
     monkeypatch.setattr(conexao, "executar", envio)
-    principal(["--manifesto", str(bancada), "segredos", "enviar", "correio",
-               "--maquina", "represa"])
+    principal(["--cadastro", str(bancada), "segredos", "enviar", "correio",
+               "--maquina", "computador-auxiliar"])
     for comando, entrada in envio.gravacoes:
         assert "cofre" not in comando
         if entrada and entrada.lstrip().startswith("{"):
@@ -142,15 +145,15 @@ def test_o_cofre_nunca_atravessa(bancada, monkeypatch):
 
 def test_enviar_para_a_principal_e_recusado(bancada, monkeypatch, capsys):
     monkeypatch.setattr(conexao, "executar", EnvioDeMentira())
-    assert principal(["--manifesto", str(bancada), "segredos", "enviar",
-                      "correio", "--maquina", "bancada"]) == 1
+    assert principal(["--cadastro", str(bancada), "segredos", "enviar",
+                      "correio", "--maquina", "computador-principal"]) == 1
     assert "principal" in capsys.readouterr().err
 
 
 def test_segredo_nao_aparece_na_saida_do_enviar(bancada, monkeypatch, capsys):
     monkeypatch.setattr(conexao, "executar", EnvioDeMentira())
-    principal(["--manifesto", str(bancada), "segredos", "enviar", "correio",
-               "--maquina", "represa"])
+    principal(["--cadastro", str(bancada), "segredos", "enviar", "correio",
+               "--maquina", "computador-auxiliar"])
     saida = capsys.readouterr()
     assert SENHA_SINTETICA not in saida.out + saida.err
 
@@ -159,8 +162,8 @@ def test_gravacao_que_falha_devolve_codigo_e_nomeia_o_arquivo(bancada,
                                                               monkeypatch,
                                                               capsys):
     monkeypatch.setattr(conexao, "executar", EnvioDeMentira(codigo=1))
-    assert principal(["--manifesto", str(bancada), "segredos", "enviar",
-                      "correio", "--maquina", "represa"]) == 5
+    assert principal(["--cadastro", str(bancada), "segredos", "enviar",
+                      "correio", "--maquina", "computador-auxiliar"]) == 5
     erro = capsys.readouterr().err
     assert "correio.env" in erro
     assert SENHA_SINTETICA not in erro
@@ -180,20 +183,20 @@ def soma_esperada(manifesto):
     from castor.manifesto import ler
     lido = ler(manifesto)
     return mod_segredos.soma(mod_segredos.montar(
-        lido, "correio", "represa",
+        lido, "correio", "computador-auxiliar",
         {"SMTP_SERVIDOR": "smtp.exemplo.test", "SMTP_SENHA": SENHA_SINTETICA}))
 
 
 def test_estado_em_dia_quando_a_soma_bate(bancada, monkeypatch, capsys):
     monkeypatch.setattr(conexao, "executar", respondendo(soma_esperada(bancada)))
-    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 0
+    assert principal(["--cadastro", str(bancada), "segredos", "estado"]) == 0
     assert "em dia" in capsys.readouterr().out
 
 
 def test_estado_desatualizado_devolve_codigo_proprio(bancada, monkeypatch,
                                                      capsys):
     monkeypatch.setattr(conexao, "executar", respondendo("0" * 64))
-    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 8
+    assert principal(["--cadastro", str(bancada), "segredos", "estado"]) == 8
     assert "desatualizado" in capsys.readouterr().out
 
 
@@ -201,13 +204,13 @@ def test_arquivo_ausente_na_cliente_e_reportado_como_ausente(bancada,
                                                              monkeypatch,
                                                              capsys):
     monkeypatch.setattr(conexao, "executar", respondendo(""))
-    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 8
+    assert principal(["--cadastro", str(bancada), "segredos", "estado"]) == 8
     assert "ausente" in capsys.readouterr().out
 
 
 def test_estado_nao_imprime_valor_nenhum(bancada, monkeypatch, capsys):
     monkeypatch.setattr(conexao, "executar", respondendo("0" * 64))
-    principal(["--manifesto", str(bancada), "segredos", "estado"])
+    principal(["--cadastro", str(bancada), "segredos", "estado"])
     saida = capsys.readouterr()
     assert SENHA_SINTETICA not in saida.out + saida.err
 
@@ -218,13 +221,13 @@ def test_maquina_inalcancavel_nao_derruba_o_relatorio_inteiro(bancada,
     """Uma máquina fora do ar não pode esconder o estado das outras."""
     def cair(destino, comando, **opcoes):
         return conexao.Saida(codigo=255, texto="",
-                             erro="ssh: Could not resolve hostname represa")
+                             erro="ssh: Could not resolve hostname computador-auxiliar")
     monkeypatch.setattr(conexao, "executar", cair)
-    assert principal(["--manifesto", str(bancada), "segredos", "estado"]) == 8
+    assert principal(["--cadastro", str(bancada), "segredos", "estado"]) == 8
     assert "inalcançável" in capsys.readouterr().out
 
 
 def test_a_principal_nao_entra_no_relatorio(bancada, monkeypatch, capsys):
     monkeypatch.setattr(conexao, "executar", respondendo(soma_esperada(bancada)))
-    principal(["--manifesto", str(bancada), "segredos", "estado"])
-    assert "bancada" not in capsys.readouterr().out
+    principal(["--cadastro", str(bancada), "segredos", "estado"])
+    assert "computador-principal" not in capsys.readouterr().out

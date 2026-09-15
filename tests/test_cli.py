@@ -54,7 +54,7 @@ def test_chave_mostrar_imprime_a_publica(tmp_path, capsys):
     manifesto.write_text(json.dumps({"maquinas": {}, "chave": str(privada)}),
                          encoding="utf-8")
 
-    assert principal(["--manifesto", str(manifesto), "chave", "mostrar"]) == 0
+    assert principal(["--cadastro", str(manifesto), "chave", "mostrar"]) == 0
     saida = capsys.readouterr().out
     assert saida.startswith("ssh-ed25519")
     assert "PRIVADA" not in saida
@@ -68,7 +68,7 @@ def test_chave_usar_anota_o_caminho_no_manifesto(tmp_path, capsys):
     manifesto = tmp_path / "castor.json"
     manifesto.write_text('{"maquinas": {}}', encoding="utf-8")
 
-    assert principal(["--manifesto", str(manifesto),
+    assert principal(["--cadastro", str(manifesto),
                       "chave", "usar", str(privada)]) == 0
     assert json.loads(manifesto.read_text(encoding="utf-8"))["chave"] == str(privada)
 
@@ -80,7 +80,7 @@ def test_chave_usar_sem_a_publica_ao_lado_falha_sem_sujar_o_manifesto(tmp_path,
     manifesto = tmp_path / "castor.json"
     manifesto.write_text('{"maquinas": {}}', encoding="utf-8")
 
-    assert principal(["--manifesto", str(manifesto),
+    assert principal(["--cadastro", str(manifesto),
                       "chave", "usar", str(privada)]) == 1
     assert "chave" not in json.loads(manifesto.read_text(encoding="utf-8"))
     assert "minha.pub" in capsys.readouterr().err
@@ -91,7 +91,7 @@ def test_chave_criar_grava_o_par_e_anota_o_manifesto(tmp_path, capsys):
     manifesto.write_text('{"maquinas": {}}', encoding="utf-8")
     destino = tmp_path / "chaves" / "castor"
 
-    assert principal(["--manifesto", str(manifesto), "chave", "criar",
+    assert principal(["--cadastro", str(manifesto), "chave", "criar",
                       "--caminho", str(destino)]) == 0
     assert destino.exists()
     saida = capsys.readouterr().out

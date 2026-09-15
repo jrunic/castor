@@ -16,11 +16,11 @@ VALORES = {"SMTP_SERVIDOR": "smtp.exemplo.test", "SMTP_PORTA": "587",
 def manifesto_de(tmp_path, servicos=None):
     dados = {
         "maquinas": {
-            "bancada": {"papel": "principal", "usuario": "ana",
+            "computador-principal": {"papel": "principal", "usuario": "ana",
                         "casa": PRINCIPAL_CASA, "sistema": "linux"},
-            "represa": {"papel": "cliente", "usuario": "castor",
+            "computador-auxiliar": {"papel": "cliente", "usuario": "castor",
                         "casa": CLIENTE_CASA, "sistema": "linux",
-                        "endereco": "represa.exemplo.test"},
+                        "endereco": "computador-auxiliar.exemplo.test"},
         },
         "servicos": servicos if servicos is not None else {
             "correio": {"chaves": ["SMTP_SERVIDOR", "SMTP_PORTA", "SMTP_SENHA"],
@@ -31,7 +31,7 @@ def manifesto_de(tmp_path, servicos=None):
 
 
 def test_o_conteudo_traz_so_as_chaves_do_servico(tmp_path):
-    conteudo = segredos.montar(manifesto_de(tmp_path), "correio", "represa",
+    conteudo = segredos.montar(manifesto_de(tmp_path), "correio", "computador-auxiliar",
                                VALORES)
     assert "TOKEN_DE_OUTRO" not in conteudo
     assert conteudo.splitlines() == [
@@ -42,7 +42,7 @@ def test_o_conteudo_traz_so_as_chaves_do_servico(tmp_path):
 
 
 def test_o_conteudo_e_lido_por_shell(tmp_path):
-    conteudo = segredos.montar(manifesto_de(tmp_path), "correio", "represa",
+    conteudo = segredos.montar(manifesto_de(tmp_path), "correio", "computador-auxiliar",
                                VALORES)
     arquivo = tmp_path / "correio.env"
     arquivo.write_text(conteudo, encoding="utf-8")
@@ -53,7 +53,7 @@ def test_o_conteudo_e_lido_por_shell(tmp_path):
 
 
 def test_o_conteudo_serve_de_environmentfile(tmp_path):
-    conteudo = segredos.montar(manifesto_de(tmp_path), "correio", "represa",
+    conteudo = segredos.montar(manifesto_de(tmp_path), "correio", "computador-auxiliar",
                                VALORES)
     for linha in conteudo.splitlines():
         assert not linha.startswith("export ")
@@ -65,7 +65,7 @@ def test_home_no_valor_vira_a_casa_da_maquina_que_vai_usar(tmp_path):
     valores = {**VALORES, "PASTA": "$HOME/dados"}
     manifesto = manifesto_de(tmp_path, servicos={
         "correio": {"chaves": ["PASTA"], "destino": "$HOME/correio.env"}})
-    conteudo = segredos.montar(manifesto, "correio", "represa", valores)
+    conteudo = segredos.montar(manifesto, "correio", "computador-auxiliar", valores)
     assert conteudo.strip() == f'PASTA="{CLIENTE_CASA}/dados"'
 
 
@@ -73,27 +73,27 @@ def test_home_principal_no_valor_vira_a_casa_da_principal(tmp_path):
     valores = {"PASTA": "$HOME_PRINCIPAL/dados"}
     manifesto = manifesto_de(tmp_path, servicos={
         "correio": {"chaves": ["PASTA"], "destino": "$HOME/correio.env"}})
-    conteudo = segredos.montar(manifesto, "correio", "represa", valores)
+    conteudo = segredos.montar(manifesto, "correio", "computador-auxiliar", valores)
     assert conteudo.strip() == f'PASTA="{PRINCIPAL_CASA}/dados"'
 
 
 def test_o_destino_tambem_resolve_a_marca(tmp_path):
-    destino = segredos.destino_de(manifesto_de(tmp_path), "correio", "represa")
+    destino = segredos.destino_de(manifesto_de(tmp_path), "correio", "computador-auxiliar")
     assert destino == f"{CLIENTE_CASA}/.config/castor/correio.env"
 
 
 def test_servico_que_nao_esta_no_manifesto_nomeia_o_manifesto(tmp_path):
     with pytest.raises(segredos.ServicoDesconhecido) as erro:
-        segredos.montar(manifesto_de(tmp_path), "inexistente", "represa", VALORES)
+        segredos.montar(manifesto_de(tmp_path), "inexistente", "computador-auxiliar", VALORES)
     assert "inexistente" in str(erro.value)
     assert "servicos" in str(erro.value)
 
 
 def test_a_soma_muda_quando_o_valor_muda(tmp_path):
     manifesto = manifesto_de(tmp_path)
-    um = segredos.soma(segredos.montar(manifesto, "correio", "represa", VALORES))
+    um = segredos.soma(segredos.montar(manifesto, "correio", "computador-auxiliar", VALORES))
     outro = segredos.soma(segredos.montar(
-        manifesto, "correio", "represa", {**VALORES, "SMTP_SENHA": "outra"}))
+        manifesto, "correio", "computador-auxiliar", {**VALORES, "SMTP_SENHA": "outra"}))
     assert um != outro
     assert len(um) == 64
 

@@ -37,18 +37,18 @@ def test_servico_em_qualquer_outro_estado_falhou():
 
 
 def test_expiracao_desativada_passou():
-    assert ronda.avaliar_expiracao("represa", None).passou
+    assert ronda.avaliar_expiracao("computador-auxiliar", None).passou
 
 
 def test_expiracao_ativa_falhou_e_diz_a_data():
-    resultado = ronda.avaliar_expiracao("represa", "2026-12-16T13:48:07Z")
+    resultado = ronda.avaliar_expiracao("computador-auxiliar", "2026-12-16T13:48:07Z")
     assert not resultado.passou
     assert "2026-12-16" in resultado.detalhe
 
 
 def test_checagem_sem_tipo_e_recusada():
     with pytest.raises(ChecagemInvalida) as erro:
-        ronda.conferir_declaracao("x", {"maquina": "represa"})
+        ronda.conferir_declaracao("x", {"maquina": "computador-auxiliar"})
     assert "tipo" in str(erro.value)
 
 
@@ -79,14 +79,14 @@ def test_checagem_sem_maquina_e_recusada():
 def test_maquina_inalcancavel_e_uma_falha_so():
     """Sem isto, máquina fora do ar manda um e-mail por checagem dela."""
     declaradas = {
-        "a": {"tipo": "comando", "maquina": "represa", "comando": "true"},
-        "b": {"tipo": "servico", "maquina": "represa", "servico": "x"},
+        "a": {"tipo": "comando", "maquina": "computador-auxiliar", "comando": "true"},
+        "b": {"tipo": "servico", "maquina": "computador-auxiliar", "servico": "x"},
     }
-    resultados = ronda.maquina_inalcancavel("represa", declaradas,
+    resultados = ronda.maquina_inalcancavel("computador-auxiliar", declaradas,
                                             "não respondeu")
     assert len(resultados) == 1
     assert not resultados[0].passou
-    assert "represa" in resultados[0].nome
+    assert "computador-auxiliar" in resultados[0].nome
 
 
 def test_gravar_e_ler_a_ultima_ronda(tmp_path):

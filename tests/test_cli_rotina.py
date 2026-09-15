@@ -19,7 +19,7 @@ def executar(tmp_path, *args):
     return subprocess.run(
         [sys.executable, "-m", "castor", *args],
         capture_output=True, text=True, cwd="src",
-        env={"CASTOR_MANIFESTO": str(manifesto), "CASTOR_ESTADO": str(tmp_path),
+        env={"CASTOR_CADASTRO": str(manifesto), "CASTOR_ESTADO": str(tmp_path),
              "PATH": "/usr/bin:/bin"},
     )
 

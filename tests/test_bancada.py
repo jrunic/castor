@@ -88,7 +88,7 @@ def test_castor_ausente_e_reconhecido_pelo_que_a_maquina_responde(destino):
 
 
 COFRE = os.environ.get("CASTOR_COFRE_DE_TESTE")
-MANIFESTO = os.environ.get("CASTOR_MANIFESTO_DE_TESTE")
+MANIFESTO = os.environ.get("CASTOR_CADASTRO_DE_TESTE")
 MAQUINA = os.environ.get("CASTOR_MAQUINA_DE_TESTE")
 
 entrega = pytest.mark.skipif(
@@ -101,7 +101,7 @@ def castor(*argumentos):
     import subprocess
     import sys
     return subprocess.run(
-        [sys.executable, "-m", "castor", "--manifesto", MANIFESTO, *argumentos],
+        [sys.executable, "-m", "castor", "--cadastro", MANIFESTO, *argumentos],
         capture_output=True, text=True,
         env={**os.environ, "PYTHONPATH": "src"})
 

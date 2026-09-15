@@ -10,6 +10,7 @@ from pathlib import Path
 
 import castor
 from castor import atualizacao as mod_atualizacao
+from castor import cadastro as mod_cadastro
 from castor import chaves as mod_chaves
 from castor import cliente as mod_cliente
 from castor import cofre as mod_cofre
@@ -38,11 +39,10 @@ def construir_analisador() -> argparse.ArgumentParser:
     analisador.add_argument("--versao", action="store_true",
                             help="imprime a versão do castor e sai")
     analisador.add_argument(
-        "--manifesto",
-        default=os.environ.get("CASTOR_MANIFESTO",
-                               str(Path(MANIFESTO_PADRAO).expanduser())),
-        help="caminho do manifesto (default: $CASTOR_MANIFESTO ou "
-             "~/.config/castor/castor.json)",
+        "--cadastro",
+        default=None,
+        help="caminho do cadastro (default: $CASTOR_CADASTRO ou "
+             "XDG cadastro.json / castor.json)",
     )
     areas = analisador.add_subparsers(dest="area", metavar="area")
 
@@ -195,7 +195,7 @@ def _montar_aviso(opcoes, raiz: Path):
     from castor.correio import RemetenteSMTP
     from castor.supressao import Supressor
 
-    config = mod_manifesto.ler(Path(opcoes.manifesto)).dados.get("aviso") or {}
+    config = mod_manifesto.ler(Path(opcoes.cadastro)).dados.get("aviso") or {}
     supressor = Supressor(raiz / "avisos.json",
                           janela_em_minutos=config.get("janela_em_minutos", 60))
 
@@ -224,10 +224,10 @@ def _despachar_rotina(opcoes) -> int:
             print(f"{agendada.nome}\t{agendada.quando}")
         return 0
 
-    declarado = mod_manifesto.ler(Path(opcoes.manifesto)).dados.get("rotinas", {})
+    declarado = mod_manifesto.ler(Path(opcoes.cadastro)).dados.get("rotinas", {})
     if opcoes.nome not in declarado:
         print(f"rotina '{opcoes.nome}' não está declarada no manifesto "
-              f"{opcoes.manifesto}.", file=sys.stderr)
+              f"{opcoes.cadastro}.", file=sys.stderr)
         return 1
 
     if opcoes.verbo == "agendar":
@@ -288,7 +288,7 @@ def _entregar(lido, servico: str, maquina: str, destino_ssh) -> str:
 
 
 def _enviar_servico(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     destino_ssh = _destino_de(opcoes, opcoes.maquina)
     arquivo = _entregar(lido, opcoes.servico, opcoes.maquina, destino_ssh)
     print(f"entregue em {opcoes.maquina}: {arquivo} e o manifesto da máquina")
@@ -297,7 +297,7 @@ def _enviar_servico(opcoes) -> int:
 
 def _estado_dos_segredos(opcoes) -> int:
     """Afirma sobre o ARQUIVO, não sobre o processo que o consome."""
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     valores = _cofre_de(lido)
     pendencias = 0
     for servico, declarado in sorted(lido.dados.get("servicos", {}).items()):
@@ -372,7 +372,7 @@ def _perguntar(destino_ssh, argumentos: str) -> str:
 
 
 def _instalar_servico(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     _so_linux(lido, opcoes.maquina)
     maquina = lido.maquina(opcoes.maquina)
     declarado = lido.dados.get("servicos", {}).get(opcoes.servico)
@@ -415,7 +415,7 @@ def _instalar_servico(opcoes) -> int:
 
 
 def _remover_servico(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     _so_linux(lido, opcoes.maquina)
     maquina = lido.maquina(opcoes.maquina)
     destino_ssh = _destino_de(opcoes, opcoes.maquina)
@@ -452,7 +452,7 @@ def _servicos_com_comando(lido) -> list:
 
 
 def _estado_dos_servicos(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     caidos = 0
     for nome, declarado in _servicos_com_comando(lido):
         alvos = declarado.get("maquinas") or [
@@ -481,7 +481,7 @@ def _estado_dos_servicos(opcoes) -> int:
 
 def _reiniciar_servico(opcoes) -> int:
     """É por aqui que um segredo trocado chega ao processo que o consome."""
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     _so_linux(lido, opcoes.maquina)
     destino_ssh = _destino_de(opcoes, opcoes.maquina)
     _mandar(destino_ssh, f"restart {opcoes.servico}.service")
@@ -496,7 +496,7 @@ def _reiniciar_servico(opcoes) -> int:
 
 
 def _registro_do_servico(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     _so_linux(lido, opcoes.maquina)
     destino_ssh = _destino_de(opcoes, opcoes.maquina)
     saida = mod_conexao.executar(
@@ -531,7 +531,7 @@ def _aviso_da_principal(opcoes, raiz):
     from castor.correio import RemetenteSMTP
     from castor.supressao import Supressor
 
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     config = lido.dados.get("aviso") or {}
     supressor = Supressor(raiz / "avisos.json",
                           janela_em_minutos=config.get("janela_em_minutos", 60))
@@ -624,7 +624,7 @@ def _checar_uma(opcoes, nome: str, declarada: dict, tipo: str):
 
 
 def _rodar_ronda(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     declaradas = lido.dados.get("ronda", {}).get("checagens", {})
     # Confere TODAS antes de rodar QUALQUER uma: declaração torta descoberta no
     # meio deixaria metade das checagens rodadas e metade não.
@@ -764,7 +764,7 @@ def _atualizar_um(opcoes, lido, maquina, nome, declarado) -> tuple:
 
 
 def _rodar_atualizacao(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     problemas = 0
     caidas = set()
     for maquina, nome, declarado in _alvos_por_maquina(lido):
@@ -790,7 +790,7 @@ def _rodar_atualizacao(opcoes) -> int:
 
 
 def _estado_da_atualizacao(opcoes) -> int:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     ausentes = 0
     for maquina, nome, declarado in _alvos_por_maquina(lido):
         try:
@@ -838,7 +838,7 @@ def _despachar_segredos(opcoes) -> int:
             print("falta --destino. O conteúdo é segredo e não vai para a "
                   "saída padrão.", file=sys.stderr)
             return 1
-        lido = mod_manifesto.ler(Path(opcoes.manifesto))
+        lido = mod_manifesto.ler(Path(opcoes.cadastro))
         conteudo = mod_segredos.montar(lido, opcoes.servico, opcoes.maquina,
                                        _cofre_de(lido))
         destino = Path(opcoes.destino)
@@ -853,12 +853,12 @@ def _despachar_segredos(opcoes) -> int:
 
 
 def _caminho_da_chave(opcoes) -> Path:
-    declarado = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto)).caminho_da_chave()
+    declarado = mod_manifesto.ler_ou_vazio(Path(opcoes.cadastro)).caminho_da_chave()
     return declarado or mod_chaves.caminho_padrao()
 
 
 def _anotar_chave(opcoes, privada: Path) -> None:
-    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.cadastro))
     mod_manifesto.gravar(mod_manifesto.anotar(lido, "chave", str(privada)))
 
 
@@ -888,7 +888,7 @@ CODIGOS = {
 
 
 def _destino_de(opcoes, nome: str) -> mod_conexao.Destino:
-    lido = mod_manifesto.ler(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler(Path(opcoes.cadastro))
     maquina = lido.maquina(nome)
     if maquina.e_principal:
         raise ErroDeManifesto(
@@ -919,7 +919,7 @@ def _medir_la(destino: mod_conexao.Destino) -> mod_medicao.Medicao:
 
 
 def _adicionar_maquina(opcoes) -> int:
-    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.cadastro))
     if opcoes.principal:
         medido = _medir_aqui()
         endereco = ""
@@ -1007,7 +1007,7 @@ def _conduzir_expiracao(nome: str) -> int:
 
 
 def _preparar_maquina(opcoes) -> int:
-    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.manifesto))
+    lido = mod_manifesto.ler_ou_vazio(Path(opcoes.cadastro))
     caminho_da_chave = lido.caminho_da_chave()
     if caminho_da_chave is None:
         print("não há chave declarada no manifesto. Rode 'castor chave criar' "
@@ -1059,7 +1059,7 @@ def _preparar_maquina(opcoes) -> int:
     servico_de_aviso = (lido.dados.get("aviso") or {}).get("servico", "correio")
     # Relê: o manifesto acabou de ser gravado com a máquina nova, e é dela que a
     # resolução de $HOME precisa.
-    declarados = mod_manifesto.ler(Path(opcoes.manifesto))
+    declarados = mod_manifesto.ler(Path(opcoes.cadastro))
     if servico_de_aviso in declarados.dados.get("servicos", {}):
         try:
             _entregar(declarados, servico_de_aviso, opcoes.nome, destino_ssh)
@@ -1084,14 +1084,14 @@ def _despachar_maquina(opcoes) -> int:
     if opcoes.verbo == "adicionar":
         return _adicionar_maquina(opcoes)
     if opcoes.verbo == "listar":
-        lido = mod_manifesto.ler(Path(opcoes.manifesto))
+        lido = mod_manifesto.ler(Path(opcoes.cadastro))
         for nome in lido.nomes():
             declarada = lido.maquina(nome)
             print(f"{nome}\t{declarada.papel}\t{declarada.endereco or '-'}"
                   f"\t{declarada.usuario}\t{declarada.sistema}")
         return 0
     if opcoes.verbo == "remover":
-        lido = mod_manifesto.ler(Path(opcoes.manifesto))
+        lido = mod_manifesto.ler(Path(opcoes.cadastro))
         mod_manifesto.gravar(mod_manifesto.retirar(lido, opcoes.nome))
         print(f"retirada do manifesto: {opcoes.nome}. Isto não desfaz nada na "
               f"máquina — chave, usuário e serviços continuam lá.")
@@ -1111,6 +1111,8 @@ def _despachar_maquina(opcoes) -> int:
 def principal(argumentos: list[str] | None = None) -> int:
     analisador = construir_analisador()
     opcoes = analisador.parse_args(argumentos)
+    if not opcoes.cadastro:
+        opcoes.cadastro = str(mod_cadastro.resolver())
     if opcoes.versao:
         print(castor.__version__)
         return 0

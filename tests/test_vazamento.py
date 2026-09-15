@@ -14,9 +14,9 @@ def _bancada(tmp_path):
     manifesto.write_text(json.dumps({
         "cofre": str(cofre),
         "maquinas": {
-            "bancada": {"papel": "principal", "usuario": "ana",
+            "computador-principal": {"papel": "principal", "usuario": "ana",
                         "casa": str(tmp_path), "sistema": "linux"},
-            "represa": {"papel": "cliente", "usuario": "castor",
+            "computador-auxiliar": {"papel": "cliente", "usuario": "castor",
                         "casa": "/home/castor", "sistema": "linux",
                         "endereco": "endereco.invalid"},
         },
@@ -37,7 +37,7 @@ def _rodar(ambiente, *argumentos):
 
 def test_nenhum_comando_imprime_segredo(tmp_path):
     manifesto, env = _bancada(tmp_path)
-    ambiente = {"CASTOR_MANIFESTO": str(manifesto), "PATH": "/usr/bin:/bin"}
+    ambiente = {"CASTOR_CADASTRO": str(manifesto), "PATH": "/usr/bin:/bin"}
 
     # 'enviar' e 'estado' falham por não alcançar a máquina — e é justamente
     # no caminho de erro que um segredo escapa para a mensagem.
@@ -45,8 +45,8 @@ def test_nenhum_comando_imprime_segredo(tmp_path):
         ["--help"],
         ["segredos", "--help"],
         ["segredos", "ver", str(env), "SMTP_SENHA"],
-        ["segredos", "gerar", "correio", "--maquina", "bancada"],
-        ["segredos", "enviar", "correio", "--maquina", "represa"],
+        ["segredos", "gerar", "correio", "--maquina", "computador-principal"],
+        ["segredos", "enviar", "correio", "--maquina", "computador-auxiliar"],
         ["segredos", "estado"],
     ):
         saida = _rodar(ambiente, *argumentos)
@@ -63,10 +63,10 @@ def test_nenhum_comando_imprime_segredo(tmp_path):
 def test_o_arquivo_gerado_tem_a_senha_mas_a_saida_nao(tmp_path):
     """Prova que o comando produziu o segredo — no arquivo, não na tela."""
     manifesto, _ = _bancada(tmp_path)
-    ambiente = {"CASTOR_MANIFESTO": str(manifesto), "PATH": "/usr/bin:/bin"}
+    ambiente = {"CASTOR_CADASTRO": str(manifesto), "PATH": "/usr/bin:/bin"}
     destino = tmp_path / "gerado.env"
     saida = _rodar(ambiente, "segredos", "gerar", "correio", "--maquina",
-                   "bancada", "--destino", str(destino))
+                   "computador-principal", "--destino", str(destino))
     assert saida.returncode == 0, saida.stderr
     assert SENHA_SINTETICA in destino.read_text(encoding="utf-8")
     assert SENHA_SINTETICA not in saida.stdout + saida.stderr

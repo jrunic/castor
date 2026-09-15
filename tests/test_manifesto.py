@@ -33,13 +33,13 @@ def test_maquina_ausente_nomeia_o_manifesto_e_a_chave(tmp_path):
 
 def test_principal_e_a_maquina_declarada_como_tal(tmp_path):
     caminho = escrever(tmp_path, {"maquinas": {
-        "bancada": {"papel": "principal", "usuario": "ana", "casa": "/Users/ana",
+        "computador-principal": {"papel": "principal", "usuario": "ana", "casa": "/Users/ana",
                     "sistema": "darwin"},
-        "represa": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
-                    "sistema": "linux", "endereco": "represa.exemplo.test"},
+        "computador-auxiliar": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
+                    "sistema": "linux", "endereco": "computador-auxiliar.exemplo.test"},
     }})
     principal = manifesto.ler(caminho).principal()
-    assert principal.nome == "bancada"
+    assert principal.nome == "computador-principal"
     assert principal.papel == "principal"
 
 
@@ -52,11 +52,11 @@ def test_manifesto_sem_principal_diz_o_que_fazer(tmp_path):
 
 def test_cliente_conhece_endereco_e_a_principal_nao_precisa(tmp_path):
     caminho = escrever(tmp_path, {"maquinas": {
-        "represa": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
-                    "sistema": "linux", "endereco": "represa.exemplo.test"},
+        "computador-auxiliar": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
+                    "sistema": "linux", "endereco": "computador-auxiliar.exemplo.test"},
     }})
-    cliente = manifesto.ler(caminho).maquina("represa")
-    assert cliente.endereco == "represa.exemplo.test"
+    cliente = manifesto.ler(caminho).maquina("computador-auxiliar")
+    assert cliente.endereco == "computador-auxiliar.exemplo.test"
     assert cliente.papel == "cliente"
 
 
@@ -64,17 +64,17 @@ def test_acrescentar_maquina_grava_e_releitura_enxerga(tmp_path):
     caminho = escrever(tmp_path, {"maquinas": {}})
     lido = manifesto.ler(caminho)
     manifesto.gravar(manifesto.acrescentar(lido, manifesto.Maquina(
-        nome="represa", usuario="castor", casa="/home/castor", sistema="linux",
-        papel="cliente", endereco="represa.exemplo.test", python="3.14.0")))
-    assert manifesto.ler(caminho).maquina("represa").python == "3.14.0"
+        nome="computador-auxiliar", usuario="castor", casa="/home/castor", sistema="linux",
+        papel="cliente", endereco="computador-auxiliar.exemplo.test", python="3.14.0")))
+    assert manifesto.ler(caminho).maquina("computador-auxiliar").python == "3.14.0"
 
 
 def test_acrescentar_maquina_ja_declarada_e_recusado(tmp_path):
     caminho = escrever(tmp_path, {"maquinas": {
-        "represa": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
-                    "sistema": "linux", "endereco": "represa.exemplo.test"}}})
+        "computador-auxiliar": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
+                    "sistema": "linux", "endereco": "computador-auxiliar.exemplo.test"}}})
     lido = manifesto.ler(caminho)
-    nova = manifesto.Maquina(nome="represa", usuario="outro", casa="/home/outro",
+    nova = manifesto.Maquina(nome="computador-auxiliar", usuario="outro", casa="/home/outro",
                              sistema="linux", papel="cliente",
                              endereco="outro.exemplo.test")
     with pytest.raises(manifesto.MaquinaJaDeclarada):
@@ -83,10 +83,10 @@ def test_acrescentar_maquina_ja_declarada_e_recusado(tmp_path):
 
 def test_retirar_tira_a_maquina_e_recusa_a_que_nao_existe(tmp_path):
     caminho = escrever(tmp_path, {"maquinas": {
-        "represa": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
-                    "sistema": "linux", "endereco": "represa.exemplo.test"}}})
+        "computador-auxiliar": {"papel": "cliente", "usuario": "castor", "casa": "/home/castor",
+                    "sistema": "linux", "endereco": "computador-auxiliar.exemplo.test"}}})
     lido = manifesto.ler(caminho)
-    assert manifesto.retirar(lido, "represa").nomes() == []
+    assert manifesto.retirar(lido, "computador-auxiliar").nomes() == []
     with pytest.raises(manifesto.MaquinaDesconhecida):
         manifesto.retirar(lido, "moinho")
 
