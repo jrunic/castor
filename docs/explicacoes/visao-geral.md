@@ -38,7 +38,7 @@ que alguém lhe conte.
 
 ## Escopo
 
-**Dentro:** uma pessoa, poucas máquinas, o que cabe num manifesto declarado à
+**Dentro:** uma pessoa, poucas máquinas, o que cabe num cadastro declarado à
 mão.
 
 **Fora:** frota, motor de incidentes com escalação, política de confiança e
@@ -47,5 +47,5 @@ aprovação de versão. Quem precisa disso precisa de outra classe de ferramenta
 ## Princípio
 
 Nada da máquina de quem usa é cravado no código. Nome de máquina, usuário,
-diretório e caminho vivem no manifesto — código com host embutido é defeito,
+diretório e caminho vivem no cadastro — código com host embutido é defeito,
 não configuração.

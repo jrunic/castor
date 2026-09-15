@@ -19,7 +19,7 @@ um comando dado na principal.
 
 | Verbo | O que faz |
 |---|---|
-| `rodar [--seco]` | atualiza os alvos declarados e **confere que o comando ainda responde** |
+| `rodar [--ensaio]` | atualiza os alvos declarados e **confere que o comando ainda responde** |
 | `estado` | diz que versão está em cada máquina, **sem atualizar nada** |
 
 ## Os quatro tipos de alvo
@@ -34,11 +34,11 @@ um comando dado na principal.
 ```json
 "atualizacao": {
   "alvos": {
-    "castor": {"tipo": "castor", "maquinas": ["bancada", "represa"]},
+    "castor": {"tipo": "castor", "maquinas": ["computador-principal", "computador-auxiliar"]},
     "jd-exemplo": {
       "tipo": "pipx",
       "pacote": "git+https://github.com/exemplo/jd-exemplo.git",
-      "maquinas": ["represa"],
+      "maquinas": ["computador-auxiliar"],
       "versao": "jd-exemplo --version",
       "reiniciar": "sentinela"
     }
@@ -95,7 +95,7 @@ Quando a atualização importa — logo depois de uma release, por exemplo —
 **confira a versão com `castor atualizacao estado`** em vez de ler o "ok" da
 rodada.
 
-## `--seco`
+## `--ensaio`
 
 Mostra o comando que rodaria em cada máquina, e não roda nada.
 
@@ -104,7 +104,7 @@ Mostra o comando que rodaria em cada máquina, e não roda nada.
 | Código | Significa |
 |---|---|
 | 0 | tudo em dia ou atualizado |
-| 1 | erro de uso, de manifesto, ou alvo mal declarado |
+| 1 | erro de uso, de cadastro, ou alvo mal declarado |
 | 2 a 5 | fracassos de conexão — ver [`chave-e-maquina.md`](chave-e-maquina.md) |
 | **11** | **algum alvo não atualizou ou ficou sem responder** |
 

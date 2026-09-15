@@ -42,7 +42,7 @@ castor/
 | Módulo | Responsabilidade |
 |---|---|
 | `cli.py` | Analisa a linha de comando, despacha por área, traduz erro em código de saída |
-| `manifesto.py` | Lê, resolve e **escreve** o manifesto; papel principal/cliente; escrita atômica |
+| `cadastro.py` | Lê, resolve e **escreve** o cadastro; papel principal/cliente; escrita atômica |
 | `chaves.py` | Criar, adotar e mostrar a chave de acesso. Nunca sobrescreve |
 | `conexao.py` | **Fronteira de sistema**: monta a invocação do `ssh` e nomeia o fracasso |
 | `medicao.py` | A sonda e a interpretação do que a máquina respondeu sobre si |
@@ -53,7 +53,7 @@ castor/
 | `atualizacao.py` | O comando de cada tipo de alvo, e o que conta como atualizado |
 | `cofre.py` | Ler o cofre, recusar permissão frouxa, filtrar por serviço, resolver as duas marcas |
 | `segredos.py` | Montar o conteúdo de um serviço, somar, e descrever sem revelar |
-| `cliente.py` | Montar o manifesto-da-cliente a partir do da principal |
+| `cliente.py` | Montar o cadastro-da-cliente a partir do da principal |
 | `rotina.py` | Envolve a execução: trava, teto de tempo, registro, alarme |
 | `agenda.py` | Entradas do castor no agendador do sistema |
 | `correio.py` | Monta e envia o aviso. Não decide se envia |
@@ -78,9 +78,9 @@ tempo, registro, e no caminho de falha o `correio`, filtrado pela `supressao`.
 
 ## Schema/persistência
 
-Manifesto JSON na principal, em `~/.config/castor/castor.json` (formato em
+Cadastro JSON na principal, em `~/.config/castor/castor.json` (formato em
 `referencias/chave-e-maquina.md` e `referencias/segredos-e-cofre.md`); cofre de
-`CHAVE=valor` ao lado dele; manifesto-da-cliente no mesmo caminho, em cada
+`CHAVE=valor` ao lado dele; cadastro-da-cliente no mesmo caminho, em cada
 cliente. Estado de execução em
 `$CASTOR_ESTADO` (padrão `~/.local/state/castor`): registros, travas e o
 arquivo de avisos já enviados.

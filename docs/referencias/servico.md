@@ -25,17 +25,17 @@ Deixa um programa rodando na máquina cliente e de pé depois que você desliga.
 | `reiniciar <servico> --maquina <nome>` | reinicia e confere que voltou. **É por aqui que um segredo trocado chega ao processo** |
 | `registro <servico> --maquina <nome> [--linhas N]` | as últimas linhas que o serviço escreveu |
 
-## O que o manifesto declara
+## O que o cadastro declara
 
 ```json
 "sentinela": {
   "chaves": ["TOKEN_DA_SENTINELA"],
   "destino": "$HOME/.config/castor/sentinela.env",
   "comando": "$HOME/.local/bin/sentinela --vigiar",
-  "descricao": "Sentinela da represa",
+  "descricao": "Sentinela do computador-auxiliar",
   "diretorio": "$HOME",
   "reiniciar": "on-failure",
-  "maquinas": ["represa"]
+  "maquinas": ["computador-auxiliar"]
 }
 ```
 
@@ -72,7 +72,7 @@ Em unit do systemd, `%h` e `%i` são especificadores e expandem em silêncio. Um
 
 ```ini
 [Unit]
-Description=Sentinela da represa
+Description=Sentinela do computador-auxiliar
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=60
@@ -119,7 +119,7 @@ de pé sem ninguém logado.
 | Código | Significa |
 |---|---|
 | 0 | pronto, ou tudo ativo |
-| 1 | erro de uso, de manifesto, ou declaração de serviço inválida |
+| 1 | erro de uso, de cadastro, ou declaração de serviço inválida |
 | 2, 3, 4, 5 | fracassos de conexão — ver [`chave-e-maquina.md`](chave-e-maquina.md) |
 | **9** | **o serviço não ficou ativo, não parou, ou um comando de systemd falhou** |
 
@@ -130,8 +130,8 @@ e o mundo é que não mudou.
 
 ```sh
 # editou o cofre
-castor segredos enviar sentinela --maquina represa
-castor servico reiniciar sentinela --maquina represa
+castor segredos enviar sentinela --maquina computador-auxiliar
+castor servico reiniciar sentinela --maquina computador-auxiliar
 ```
 
 `segredos estado` afirma sobre o **arquivo**; o processo em memória só vê o

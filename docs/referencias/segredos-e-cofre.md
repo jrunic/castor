@@ -6,7 +6,7 @@ escopo: repo:castor
 plataforma: "*"
 status: ativo
 dominios: [tecnologia]
-descricao: Referência da área segredos — o cofre, as duas marcas, os quatro verbos, o manifesto-da-cliente e os códigos de saída
+descricao: Referência da área segredos — o cofre, as duas marcas, os quatro verbos, o cadastro-da-cliente e os códigos de saída
 tags: [referencia, segredos, cofre, entrega]
 ---
 
@@ -33,7 +33,7 @@ serviço pede e o cofre não tem faz `gerar` recusar, nomeando a que falta.
 | Permissão `600` | cofre legível por outro usuário não é cofre — o comando **recusa** e diz o `chmod` |
 | Fica só na principal | nenhum comando copia o cofre para outra máquina |
 | Ninguém escreve nele pelo castor | é um arquivo que você edita; não há verbo que grave |
-| Caminho declarado no manifesto | chave `cofre` |
+| Caminho declarado no cadastro | chave `cofre` |
 
 **O compromisso, declarado:** um arquivo concentra tudo, e o raio de dano é
 maior que o de segredos separados por serviço. Para uma pessoa com duas máquinas
@@ -59,7 +59,7 @@ Valem tanto nos valores do cofre quanto nos caminhos de destino.
 | Verbo | O que faz |
 |---|---|
 | `gerar <servico> --maquina <nome> --destino <arquivo>` | filtra o cofre, resolve, e **grava em arquivo**. Sem `--destino`, recusa |
-| `enviar <servico> --maquina <nome>` | entrega o arquivo do serviço à cliente **e atualiza o manifesto-da-cliente** |
+| `enviar <servico> --maquina <nome>` | entrega o arquivo do serviço à cliente **e atualiza o cadastro-da-cliente** |
 | `estado` | por serviço e máquina: em dia, desatualizado, ausente ou inalcançável |
 | `ver <arquivo> <variavel> [--revelar]` | descreve a variável (tamanho e soma); só revela sob pedido |
 
@@ -74,7 +74,7 @@ Não há arquivo temporário na cliente para alguém ler no meio do caminho, e o
 conteúdo nunca vira argumento de comando — argumento aparece na lista de
 processos da máquina.
 
-## O que entra no manifesto
+## O que entra no cadastro
 
 ```json
 {
@@ -83,7 +83,7 @@ processos da máquina.
     "correio": {
       "chaves": ["SMTP_SERVIDOR", "SMTP_PORTA", "SMTP_USUARIO", "SMTP_SENHA"],
       "destino": "$HOME/.config/castor/correio.env",
-      "maquinas": ["represa"]
+      "maquinas": ["computador-auxiliar"]
     }
   },
   "aviso": {
@@ -95,7 +95,7 @@ processos da máquina.
     "variavel": "SMTP_SENHA"
   },
   "rotinas": {
-    "limpeza": {"quando": "0 3 * * *", "comando": "true", "maquina": "represa"}
+    "limpeza": {"quando": "0 3 * * *", "comando": "true", "maquina": "computador-auxiliar"}
   }
 }
 ```
@@ -123,9 +123,9 @@ o bloco parece ter campo sobrando:
 
 Servidor, porta, usuário, remetente, destinatário e janela são lidos pelos dois.
 
-## O manifesto-da-cliente
+## O cadastro-da-cliente
 
-O manifesto inteiro mora na principal e **não** é copiado. A cliente recebe, em
+O cadastro inteiro mora na principal e **não** é copiado. A cliente recebe, em
 `~/.config/castor/castor.json`, só o que diz respeito a ela: o próprio cadastro,
 suas rotinas, sua ronda e a configuração de aviso, com os caminhos já
 resolvidos. Vai junto de todo `enviar`.
@@ -138,7 +138,7 @@ principal — a cliente não acessa a principal, e endereço ali seria convite.
 | Código | Significa |
 |---|---|
 | 0 | pronto, ou tudo em dia |
-| 1 | erro de uso, de manifesto ou de cofre (ausente, frouxo, chave faltando) |
+| 1 | erro de uso, de cadastro ou de cofre (ausente, frouxo, chave faltando) |
 | 2 | rede inalcançável |
 | 3 | chave recusada, ou identidade do host mudada |
 | 4 | castor ausente do outro lado |
@@ -157,6 +157,6 @@ Quem leva o valor novo ao processo é
 [`castor servico reiniciar`](servico.md):
 
 ```sh
-castor segredos enviar sentinela --maquina represa
-castor servico reiniciar sentinela --maquina represa
+castor segredos enviar sentinela --maquina computador-auxiliar
+castor servico reiniciar sentinela --maquina computador-auxiliar
 ```

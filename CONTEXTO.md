@@ -48,7 +48,7 @@ Para quem: quem opera a própria máquina — e o agente de IA que opera junto.
 
 - **Linguagem:** Python 3.12+ (**stdlib-only** em runtime; sem código nativo)
 - **CLI:** `argparse` (stdlib)
-- **Manifesto:** JSON (stdlib — sem dependência de interpretador externo)
+- **Cadastro:** JSON (stdlib — sem dependência de interpretador externo)
 - **Testes:** pytest
 - **Distribuição:** aplicação Python de arquivo único, publicada como release
   no GitHub. **Não** publica em registro de pacote.
@@ -134,7 +134,7 @@ docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
   Quem precisa conferir recebe comprimento e soma de verificação; o valor só
   sob flag explícita.
 - **Nada do host do usuário é cravado no código.** Máquina, usuário, diretório
-  e caminho vêm do manifesto. Código com nome de host embutido é defeito, não
+  e caminho vêm do cadastro. Código com nome de host embutido é defeito, não
   configuração — foi o que travou a reutilização do toolkit de origem.
 - **Stdlib primeiro** (acima), e **zero código nativo**.
 - **Runner de testes canônico:** `.venv/bin/pytest` na raiz. O `python3` de
@@ -161,7 +161,7 @@ comportamento entra no `CHANGELOG.md` no mesmo commit.
 - `docs/arquitetura.md` — mapa estrutural (carga sob demanda)
 - `docs/explicacoes/visao-geral.md` — o quê e por quê
 - `docs/guias/primeira-maquina.md` — pôr a primeira cliente de pé
-- `docs/referencias/chave-e-maquina.md` — verbos, códigos de saída, manifesto
+- `docs/referencias/chave-e-maquina.md` — verbos, códigos de saída, cadastro
 - `docs/referencias/segredos-e-cofre.md` — o cofre, as marcas, a entrega
 - `docs/referencias/servico.md` — a unit gerada, o linger, o código 9
 - `docs/referencias/rotina.md` — o que roda sozinho na cliente

@@ -12,140 +12,45 @@ tags: [guia, chave, maquina, ssh, tailscale]
 
 # Pôr a primeira máquina de pé
 
-Leva uma máquina recém-instalada a máquina cliente: alcançável por chave,
-medida, com o castor instalado e ligada à rede privada.
+Duas partes: instalar o castor no **computador-principal**, depois preparar o
+primeiro **computador-auxiliar**.
 
-**Antes de começar**, a máquina nova precisa de:
+Os nomes deste guia são inventados.
 
-1. estar ligada e na rede;
-2. servidor de SSH ativo;
-3. um usuário criado na instalação, **com sudo** — o castor cria um usuário de
-   serviço, e para isso usa o sudo desse primeiro usuário;
-4. **Python 3.12 ou mais novo instalado.** O castor confere e **não instala**:
-   Debian 12 traz 3.11 e Ubuntu 22.04 traz 3.10, e nessas o preparo para no
-   passo do Python, dizendo isso. Distribuições de 2024 em diante costumam
-   trazer 3.12+.
+Você vai precisar de uma conta no **Tailscale**. Criar a conta é grátis; o
+castor instala o programa quando faltar.
 
-Os três primeiros qualquer instalador de Linux entrega. O quarto é o que mais
-surpreende, e é melhor conferir antes: `python3 -V` na máquina nova.
-
-Você também vai precisar de uma conta no **Tailscale** — é a rede privada que o
-castor usa para as máquinas se enxergarem de qualquer lugar. Criar a conta é
-grátis e leva um minuto; o castor instala o programa na máquina nova sozinho.
-
-O resto sai daqui, da máquina principal.
-
-Os nomes deste guia são inventados: `bancada` é a máquina principal e `represa`
-é a cliente.
-
-## 1. A chave de acesso
+## 1. Instalar o castor no computador-principal
 
 ```sh
-castor chave criar
+curl -fsSL https://raw.githubusercontent.com/jrunic/castor/main/scripts/instalar.sh | sh
 ```
 
-Gera o par em `~/.ssh/castor` e anota o caminho no manifesto. Se você já tem
-uma chave que quer usar:
+Instala em `~/.local/bin/castor`. Se não houver Python 3.12 ou mais novo, o
+instalador põe o 3.14 em `~/.local/share/castor/python` e crava esse
+interpretador no comando.
+
+## 2. Configurar a principal
 
 ```sh
-castor chave usar ~/.ssh/id_ed25519
+castor configurar
 ```
 
-Nenhum dos dois sobrescreve chave existente. Chave sobrescrita é acesso
-perdido, e o castor não faz isso por conta própria.
+O comando pergunta se cria a chave ou se usa uma que você aponta, o nome desta
+máquina, se você quer aviso por e-mail (Google ou outro) e instala o Tailscale
+se ele não estiver no PATH. Só grava o cadastro e o cofre **depois** da rede
+estar de pé. Não cole JSON à mão nesta etapa.
 
-## 2. Cadastrar a máquina principal
+## 3. Conferir
 
 ```sh
-castor maquina adicionar bancada --principal
+castor maquina listar
 ```
-
-A principal é esta máquina, a que você usa. Ela guarda a chave, o manifesto e —
-mais adiante — o cofre de segredos. As clientes executam; a cliente nunca
-acessa a principal.
-
-Repare que você não digitou diretório, usuário nem sistema: o comando mediu.
-Campo digitado é caminho errado que ninguém vai saber diagnosticar depois.
-
-## 3. O cofre, se você quer ser avisado
-
-Se você quer que a máquina saiba avisar por e-mail quando algo falhar — e quer —
-o cofre precisa existir antes. Ele é um arquivo que você edita:
-
-```sh
-mkdir -p ~/.config/castor
-cat > ~/.config/castor/cofre <<'FIM'
-SMTP_SERVIDOR=smtp.seuprovedor.test
-SMTP_PORTA=587
-SMTP_USUARIO=voce@seuprovedor.test
-SMTP_SENHA=a-senha-de-aplicativo
-FIM
-chmod 600 ~/.config/castor/cofre
-```
-
-Agora o manifesto precisa saber onde o cofre está e quem recebe o quê. **Essa
-parte você escreve à mão** — não há comando que escreva no manifesto, de
-propósito: quem guarda segredo é você, e uma ferramenta que escreve no cofre é
-uma ferramenta que pode apagá-lo.
-
-Abra `~/.config/castor/castor.json` (o `castor maquina adicionar` já o criou) e
-acrescente três blocos ao que já está lá:
-
-```json
-{
-  "chave": "/Users/ana/.ssh/castor",
-  "maquinas": {
-    "bancada": { "papel": "principal", "usuario": "ana", "casa": "/Users/ana",
-                 "sistema": "darwin", "endereco": "", "python": "3.12.14" }
-  },
-
-  "cofre": "/Users/ana/.config/castor/cofre",
-
-  "servicos": {
-    "correio": {
-      "chaves": ["SMTP_SERVIDOR", "SMTP_PORTA", "SMTP_USUARIO", "SMTP_SENHA"],
-      "destino": "$HOME/.config/castor/correio.env",
-      "maquinas": ["represa"]
-    }
-  },
-
-  "aviso": {
-    "servico": "correio",
-    "servidor": "smtp.seuprovedor.test", "porta": 587,
-    "usuario": "voce@seuprovedor.test",
-    "de": "voce@seuprovedor.test",
-    "para": "voce@seuprovedor.test",
-    "janela_em_minutos": 60,
-    "arquivo_de_segredo": "$HOME/.config/castor/correio.env",
-    "variavel": "SMTP_SENHA"
-  }
-}
-```
-
-Três coisas que confundem na primeira vez:
-
-- **`represa` ainda não existe** — ela nasce no passo 4. Declarar aqui a máquina
-  que vai receber é normal; a entrega só acontece depois que ela existe.
-- **`$HOME` é o da máquina que vai usar o arquivo**, não o seu. Na cliente ele
-  vira `/home/castor`. As duas marcas aceitas são `$HOME` e `$HOME_PRINCIPAL`, e
-  qualquer outro cifrão é recusado.
-- **`castor.json` é dois arquivos diferentes**: este, o seu, que fica na
-  principal e tem tudo; e o da cliente, que o castor gera e entrega, com só o que
-  diz respeito a ela. **O cofre nunca vai.**
-
-O formato completo de cada bloco está nas referências de
-[`segredos`](../referencias/segredos-e-cofre.md),
-[`servico`](../referencias/servico.md), [`rotina`](../referencias/rotina.md) e
-[`ronda`](../referencias/ronda.md).
-
-Com isso no lugar, o `preparar` do passo seguinte termina entregando a
-credencial à máquina, e ela já nasce sabendo avisar. Sem isso, ele diz em voz
-alta que a máquina **não sabe avisar**, e o que fazer para consertar.
 
 ## 4. Preparar a máquina cliente
 
 ```sh
-castor maquina preparar represa \
+castor maquina preparar computador-auxiliar \
   --endereco 192.168.1.50 \
   --usuario-inicial ubuntu
 ```
@@ -178,7 +83,7 @@ acesso roda antes de o acesso novo ter sido provado.
 
 ```sh
 castor maquina listar
-castor maquina testar represa
+castor maquina testar computador-auxiliar
 ```
 
 `testar` responde de três jeitos diferentes quando dá errado, porque as
@@ -191,7 +96,7 @@ O castor grava a unit do systemd e entrega o segredo do serviço. **O programa e
 si você instala** — o castor não o baixa nem o compila.
 
 Instale-o na cliente (do jeito que ele se instala: `pipx`, `npm`, um binário
-copiado), e então declare o serviço no manifesto, com o `comando` apontando para
+copiado), e então declare o serviço no cadastro, com o `comando` apontando para
 o caminho **absoluto** onde ele ficou:
 
 ```json
@@ -199,15 +104,15 @@ o caminho **absoluto** onde ele ficou:
   "chaves": ["TOKEN_DA_SENTINELA"],
   "destino": "$HOME/.config/castor/sentinela.env",
   "comando": "/home/castor/.local/bin/sentinela --vigiar",
-  "descricao": "Sentinela da represa",
-  "maquinas": ["represa"]
+  "descricao": "Sentinela do computador-auxiliar",
+  "maquinas": ["computador-auxiliar"]
 }
 ```
 
 Acrescente `TOKEN_DA_SENTINELA` ao cofre, e então:
 
 ```sh
-castor servico instalar sentinela --maquina represa
+castor servico instalar sentinela --maquina computador-auxiliar
 castor servico estado
 ```
 
@@ -216,7 +121,7 @@ serviço continuar de pé depois que você desconecta — e **confere que ficou
 ativo**. Se não ficou, ele diz e manda você olhar o registro:
 
 ```sh
-castor servico registro sentinela --maquina represa
+castor servico registro sentinela --maquina computador-auxiliar
 ```
 
 Detalhes em [`servico.md`](../referencias/servico.md).
@@ -226,14 +131,14 @@ Detalhes em [`servico.md`](../referencias/servico.md).
 Duas coisas diferentes, e você provavelmente quer as duas.
 
 **A rotina roda sozinha na cliente.** É o único caminho que não depende de
-alguém dar comando. Declare no manifesto:
+alguém dar comando. Declare no cadastro:
 
 ```json
 "rotinas": {
   "checa-espaco": {
     "quando": "0 * * * *",
     "comando": "/usr/bin/test $(df -P / | awk 'NR==2 {print $5+0}') -lt 90",
-    "maquina": "represa"
+    "maquina": "computador-auxiliar"
   }
 }
 ```
@@ -241,9 +146,9 @@ alguém dar comando. Declare no manifesto:
 Entregue e agende — o agendamento é feito **uma vez**, de dentro da cliente:
 
 ```sh
-castor segredos enviar correio --maquina represa   # leva o manifesto dela junto
+castor segredos enviar correio --maquina computador-auxiliar   # leva o cadastro dela junto
 ssh castor@<endereço>
-castor rotina agendar checa-espaco --maquina represa
+castor rotina agendar checa-espaco --maquina computador-auxiliar
 castor rotina listar
 ```
 
@@ -257,15 +162,15 @@ as que a própria máquina não consegue responder sobre si:
 "ronda": {
   "janela_em_minutos": 360,
   "checagens": {
-    "sentinela-de-pe": {"tipo": "servico", "maquina": "represa",
+    "sentinela-de-pe": {"tipo": "servico", "maquina": "computador-auxiliar",
                         "servico": "sentinela"},
-    "represa-nao-expira": {"tipo": "expiracao", "maquina": "represa"}
+    "computador-auxiliar-nao-expira": {"tipo": "expiracao", "maquina": "computador-auxiliar"}
   }
 }
 ```
 
 ```sh
-castor ronda rodar --seco     # vê o que daria, sem avisar ninguém
+castor ronda rodar --ensaio     # vê o que daria, sem avisar ninguém
 castor ronda rodar            # a primeira de verdade
 castor ronda estado           # o que deu na última, sem reexecutar
 ```
@@ -280,7 +185,7 @@ Detalhes em [`ronda.md`](../referencias/ronda.md).
 
 ```sh
 castor atualizacao estado         # que versão está onde
-castor atualizacao rodar --seco   # o que faria
+castor atualizacao rodar --ensaio   # o que faria
 castor atualizacao rodar          # faz, e confere que o comando ainda responde
 ```
 
@@ -291,7 +196,7 @@ Detalhes em [`atualizacao.md`](../referencias/atualizacao.md).
 Editou o cofre? Entregue de novo, e confira:
 
 ```sh
-castor segredos enviar correio --maquina represa
+castor segredos enviar correio --maquina computador-auxiliar
 castor segredos estado
 ```
 
@@ -302,7 +207,7 @@ cofre produziria hoje — sem imprimir valor nenhum.
 memória.** Trocar o arquivo não mexe no processo:
 
 ```sh
-castor servico reiniciar sentinela --maquina represa
+castor servico reiniciar sentinela --maquina computador-auxiliar
 ```
 
 ## Quando der errado
@@ -318,4 +223,4 @@ castor servico reiniciar sentinela --maquina represa
 | `o serviço ... ficou 'failed'` | `castor servico registro <nome> --maquina <máquina>` diz o que ele falou ao morrer |
 | `o cofre ... não tem <CHAVE>` | acrescente a linha no cofre da principal e rode de novo |
 | `... pode ser lido por outros usuários` | `chmod 600` no cofre |
-| `não há chave declarada no manifesto` | `castor chave criar` |
+| `não há chave declarada no cadastro` | `castor chave criar` |

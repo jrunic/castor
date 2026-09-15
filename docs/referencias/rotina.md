@@ -34,7 +34,7 @@ Os três são comandos que a **cliente** dá a si mesma — quem os chama é o `
 dela, ou você por uma sessão de ssh nela. Não há verbo da principal que agende
 na cliente nesta versão: você entra na máquina uma vez, agenda, e não volta.
 
-## O que o manifesto declara
+## O que o cadastro declara
 
 ```json
 "rotinas": {
@@ -42,7 +42,7 @@ na cliente nesta versão: você entra na máquina uma vez, agenda, e não volta.
     "quando": "0 3 * * *",
     "comando": "/home/castor/bin/limpar-temporarios",
     "teto_em_segundos": 900,
-    "maquina": "represa"
+    "maquina": "computador-auxiliar"
   }
 }
 ```
@@ -52,11 +52,11 @@ na cliente nesta versão: você entra na máquina uma vez, agenda, e não volta.
 | `quando` | os cinco campos do `cron` |
 | `comando` | o que executar, **sob `sh -c`** — pode ter argumentos, `$( )`, pipe e redirecionamento. Use caminho absoluto: o `cron` tem PATH curto |
 | `teto_em_segundos` | tempo máximo. Estourou, a rotina morre com código **124** |
-| `maquina` | **de quem é a rotina.** É por este campo que ela chega na cliente, dentro do manifesto-da-cliente |
+| `maquina` | **de quem é a rotina.** É por este campo que ela chega na cliente, dentro do cadastro-da-cliente |
 
-Sem `maquina`, a rotina não vai para máquina nenhuma — o manifesto-da-cliente
+Sem `maquina`, a rotina não vai para máquina nenhuma — o cadastro-da-cliente
 filtra por ele. Veja
-[`segredos-e-cofre.md`](segredos-e-cofre.md#o-manifesto-da-cliente).
+[`segredos-e-cofre.md`](segredos-e-cofre.md#o-cadastro-da-cliente).
 
 ## O que `rodar` garante
 
@@ -86,7 +86,7 @@ E o código de saída que chega ao castor é o da linha inteira.
 
 ## O aviso
 
-Vem da configuração `aviso` do manifesto-da-cliente, e a senha sai do **arquivo
+Vem da configuração `aviso` do cadastro-da-cliente, e a senha sai do **arquivo
 de serviço que a área `segredos` entregou nessa máquina** — não do cofre, que
 nunca sai da principal.
 
@@ -111,19 +111,19 @@ manda **um** e-mail por janela, não um por execução.
 
 ## Pôr uma rotina para rodar, do começo ao fim
 
-Na principal, declare a rotina e entregue o manifesto atualizado à cliente:
+Na principal, declare a rotina e entregue o cadastro atualizado à cliente:
 
 ```sh
-# 1. declare "rotinas" no manifesto (edição à mão — não há verbo que escreva)
-# 2. entregue: todo 'enviar' atualiza o manifesto-da-cliente junto
-castor segredos enviar correio --maquina represa
+# 1. declare "rotinas" no cadastro (edição à mão — não há verbo que escreva)
+# 2. entregue: todo 'enviar' atualiza o cadastro-da-cliente junto
+castor segredos enviar correio --maquina computador-auxiliar
 ```
 
 Na cliente, uma única vez:
 
 ```sh
 ssh castor@<endereço>
-castor rotina agendar limpeza --maquina represa
+castor rotina agendar limpeza --maquina computador-auxiliar
 castor rotina listar
 ```
 
@@ -147,7 +147,7 @@ desagendar nesta versão — apague a linha marcada com `crontab -e`.
 | Código | Significa |
 |---|---|
 | 0 | o comando saiu 0, **ou** não rodou porque já havia uma execução em curso |
-| 1 | rotina não declarada no manifesto, ou erro de manifesto |
+| 1 | rotina não declarada no cadastro, ou erro de cadastro |
 | **124** | o teto de tempo estourou |
 | qualquer outro | é o código do próprio comando, repassado |
 

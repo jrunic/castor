@@ -6,8 +6,8 @@ escopo: repo:castor
 plataforma: "*"
 status: ativo
 dominios: [tecnologia]
-descricao: Referência das áreas chave e maquina — verbos, opções, códigos de saída e o formato do manifesto
-tags: [referencia, cli, chave, maquina, manifesto]
+descricao: Referência das áreas chave e maquina — verbos, opções, códigos de saída e o formato do cadastro
+tags: [referencia, cli, chave, maquina, cadastro]
 ---
 
 # Referência: `chave` e `maquina`
@@ -16,7 +16,7 @@ tags: [referencia, cli, chave, maquina, manifesto]
 
 | Opção | Efeito |
 |---|---|
-| `--manifesto <caminho>` | manifesto a usar. Padrão: `$CASTOR_MANIFESTO`, ou `~/.config/castor/castor.json` |
+| `--cadastro <caminho>` | cadastro a usar. Padrão: `$CASTOR_CADASTRO`, ou `~/.config/castor/cadastro.json` |
 | `--versao` | imprime a versão e sai |
 | `--help` | lista as áreas; `castor <área> --help` lista os verbos |
 
@@ -26,9 +26,9 @@ tags: [referencia, cli, chave, maquina, manifesto]
 |---|---|
 | `criar [--caminho <caminho>]` | gera um par ed25519. Padrão: `~/.ssh/castor`. Recusa sobrescrever chave existente |
 | `usar <caminho>` | adota uma chave que já existe. Exige a pública ao lado (`<caminho>.pub`) |
-| `mostrar` | imprime a chave **pública** declarada no manifesto |
+| `mostrar` | imprime a chave **pública** declarada no cadastro |
 
-A chave privada vive no lugar padrão do sistema, não no manifesto — o manifesto
+A chave privada vive no lugar padrão do sistema, não no cadastro — o cadastro
 guarda só o caminho. Nenhum verbo imprime a privada.
 
 ## `castor maquina`
@@ -40,7 +40,7 @@ guarda só o caminho. Nenhum verbo imprime a privada.
 | `preparar <nome> --endereco <endereço> --usuario-inicial <usuário> [--usuario-de-servico <usuário>]` | leva uma máquina recém-instalada a cliente |
 | `listar` | uma linha por máquina: nome, papel, endereço, usuário, sistema |
 | `testar <nome>` | prova a conexão e responde a versão do castor do outro lado |
-| `remover <nome>` | tira do manifesto. **Não** desfaz nada na máquina |
+| `remover <nome>` | tira do cadastro. **Não** desfaz nada na máquina |
 
 Usuário, diretório, sistema e versão do Python nunca são digitados: vêm da
 medição. O que você informa é o que é escolha sua — o nome e o endereço.
@@ -55,7 +55,7 @@ diz qual das duas foi.
 | Código | Significa | Providência |
 |---|---|---|
 | 0 | pronto | — |
-| 1 | erro de uso, de manifesto ou de chave local | ler a mensagem; ela nomeia o comando que conserta |
+| 1 | erro de uso, de cadastro ou de chave local | ler a mensagem; ela nomeia o comando que conserta |
 | 2 | rede inalcançável | conferir se a máquina está ligada e o endereço certo |
 | 3 | chave recusada, ou identidade do host mudada | conferir o `authorized_keys`; investigar antes de mexer no `known_hosts` |
 | 4 | castor ausente do outro lado | `castor maquina preparar` |
@@ -67,7 +67,7 @@ diz qual das duas foi.
 | 10 | alguma checagem da ronda falhou | ver [`ronda.md`](ronda.md) |
 | 11 | algum alvo não atualizou | ver [`atualizacao.md`](atualizacao.md) |
 
-## O manifesto
+## O cadastro
 
 JSON, na máquina principal. Exemplo completo:
 
@@ -75,7 +75,7 @@ JSON, na máquina principal. Exemplo completo:
 {
   "chave": "/home/ana/.ssh/castor",
   "maquinas": {
-    "bancada": {
+    "computador-principal": {
       "papel": "principal",
       "usuario": "ana",
       "casa": "/home/ana",
@@ -83,7 +83,7 @@ JSON, na máquina principal. Exemplo completo:
       "endereco": "",
       "python": "3.12.14"
     },
-    "represa": {
+    "computador-auxiliar": {
       "papel": "cliente",
       "usuario": "castor",
       "casa": "/home/castor",
@@ -102,7 +102,7 @@ JSON, na máquina principal. Exemplo completo:
 | `endereco` | informado. Vazio na principal, que não é acessada |
 | `chave` | caminho da privada, anotado por `chave criar` ou `chave usar` |
 
-A escrita é atômica: grava ao lado e troca. Interrupção não deixa o manifesto
+A escrita é atômica: grava ao lado e troca. Interrupção não deixa o cadastro
 pela metade.
 
 ### Metade dele é escrita por comando, metade por você
@@ -122,7 +122,7 @@ ferramenta que escreve no cofre é ferramenta que pode apagá-lo.
 | `atualizacao` | você | [`atualizacao.md`](atualizacao.md) |
 | `aviso` | você | [`segredos-e-cofre.md`](segredos-e-cofre.md) e [`rotina.md`](rotina.md) |
 
-Não há validador de manifesto nesta versão: cada comando recusa o que não
+Não há validador de cadastro nesta versão: cada comando recusa o que não
 entende, nomeando o campo. JSON quebrado aparece como erro de leitura no
 primeiro comando que rodar.
 

@@ -22,7 +22,7 @@ cliente não precisa saber que ela existe — não há nada a instalar para vigi
 
 | Verbo | O que faz |
 |---|---|
-| `rodar [--seco]` | roda as checagens declaradas, avisa o que **mudou de estado**, e guarda o resultado |
+| `rodar [--ensaio]` | roda as checagens declaradas, avisa o que **mudou de estado**, e guarda o resultado |
 | `estado` | mostra o resultado da última ronda, **sem reexecutar nada** |
 
 ## Os três tipos de checagem
@@ -37,16 +37,16 @@ cliente não precisa saber que ela existe — não há nada a instalar para vigi
 "ronda": {
   "janela_em_minutos": 360,
   "checagens": {
-    "disco-da-represa": {
+    "disco-do-computador-auxiliar": {
       "tipo": "comando",
-      "maquina": "represa",
+      "maquina": "computador-auxiliar",
       "comando": "test $(df -P / | awk 'NR==2 {print $5+0}') -lt 90",
       "descricao": "disco de / abaixo de 90%"
     },
     "sentinela-de-pe": {
-      "tipo": "servico", "maquina": "represa", "servico": "sentinela"
+      "tipo": "servico", "maquina": "computador-auxiliar", "servico": "sentinela"
     },
-    "represa-nao-expira": {"tipo": "expiracao", "maquina": "represa"}
+    "computador-auxiliar-nao-expira": {"tipo": "expiracao", "maquina": "computador-auxiliar"}
   }
 }
 ```
@@ -86,7 +86,7 @@ serviço com a senha é coisa da máquina cliente, e aqui não existe.
 Falha no envio não derruba a ronda: o resultado sai na tela, e a falha do aviso
 aparece no erro padrão.
 
-## `--seco`
+## `--ensaio`
 
 Roda tudo, imprime, e **não avisa nem grava**. É o que permite declarar uma
 checagem nova sem disparar e-mail enquanto o comando ainda está sendo acertado.
@@ -106,7 +106,7 @@ data é pior que nenhuma ronda, porque dá sensação de vigilância.
 | Código | Significa |
 |---|---|
 | 0 | todas as checagens passaram |
-| 1 | erro de uso, de manifesto, ou checagem mal declarada |
+| 1 | erro de uso, de cadastro, ou checagem mal declarada |
 | 2 a 5 | fracassos de conexão — ver [`chave-e-maquina.md`](chave-e-maquina.md) |
 | **10** | **alguma checagem falhou** |
 
