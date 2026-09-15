@@ -176,7 +176,10 @@ def _preparo_de_mentira(monkeypatch, *, url=None, expiracao=None,
         if erro_do_roteiro is not None:
             raise erro_do_roteiro
         from castor import medicao as mod_medicao
-        contexto["medicao"] = mod_medicao.interpretar(RESPOSTA_DA_SONDA)
+        contexto["medicao"] = mod_medicao.interpretar(
+            RESPOSTA_DA_SONDA.replace("3.14.0", "3.11.2"))
+        contexto["medicao_servico"] = mod_medicao.interpretar(RESPOSTA_DA_SONDA)
+        contexto["python_da_conta"] = "/home/castor/.local/share/castor/python/bin/python3"
         if url:
             contexto["url_de_login"] = url
         return ["acesso_inicial"]
@@ -222,6 +225,7 @@ def test_preparar_cadastra_a_maquina_e_avisa_o_que_falta(tmp_path, capsys,
     assert gravado["papel"] == "cliente"
     assert gravado["usuario"] == "castor"
     assert gravado["endereco"] == "computador-auxiliar.exemplo.test"
+    assert gravado["python"] == "3.14.0"
     assert "segredos enviar" in capsys.readouterr().out
 
 

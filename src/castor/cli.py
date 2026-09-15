@@ -1043,6 +1043,7 @@ def _preparar_maquina(opcoes) -> int:
         return codigo
 
     medido = contexto["medicao"]
+    da_conta = contexto["medicao_servico"]
     nota = mod_medicao.conferir_fuso(medido, fuso_daqui=time.strftime("%z"))
     if nota:
         print(f"[castor] {nota}")
@@ -1050,7 +1051,7 @@ def _preparar_maquina(opcoes) -> int:
     maquina = mod_manifesto.Maquina(
         nome=opcoes.nome, usuario=opcoes.usuario_de_servico,
         casa=f"/home/{opcoes.usuario_de_servico}", sistema=medido.sistema,
-        endereco=opcoes.endereco, python=medido.python, papel="cliente")
+        endereco=opcoes.endereco, python=da_conta.python, papel="cliente")
     mod_manifesto.gravar(mod_manifesto.acrescentar(lido, maquina, substituir=True))
 
     # O roteiro monta os próprios destinos e não expõe nenhum; aqui a conexão é

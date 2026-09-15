@@ -8,6 +8,7 @@ máquina do usuário:
 2. Todo passo que fecha um caminho de acesso declara, em 'exige', a prova de
    que o caminho novo funciona. Sem a prova no lugar, o passo não roda.
 """
+import shlex
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -198,6 +199,47 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
                     f"continua de pé.")
         return None
 
+    def texto_do_irmao() -> str:
+        local = Path(__file__).resolve().parents[2] / "scripts" / "instalar-python.sh"
+        if local.is_file():
+            return local.read_text(encoding="utf-8")
+        raise ErroDePreparo(
+            "não achei o instalador de Python na principal para enviar à cliente.")
+
+    def instalar_python_da_conta(_):
+        sonda = correr(servico, "bash -lc " + shlex.quote(mod_medicao.SONDA))
+        medido = mod_medicao.interpretar(sonda.texto)
+        contexto["medicao_servico"] = medido
+        if mod_medicao.conferir_python(medido) is None:
+            achado = correr(servico, "bash -lc " + shlex.quote("command -v python3"))
+            contexto["python_da_conta"] = achado.texto.strip() or "python3"
+            return
+        saida = correr(
+            servico,
+            'mkdir -p "$HOME/.local/bin" && '
+            'cat > "$HOME/.local/bin/castor-instalar-python.sh" && '
+            'chmod 700 "$HOME/.local/bin/castor-instalar-python.sh" && '
+            'bash -lc "$HOME/.local/bin/castor-instalar-python.sh"',
+            entrada=texto_do_irmao(),
+        )
+        linhas = [linha for linha in saida.texto.splitlines() if linha.strip()]
+        py = linhas[-1] if linhas else ""
+        contexto["python_da_conta"] = py
+        if py:
+            segunda = (
+                f"export PATH=\"$(dirname {shlex.quote(py)}):$PATH\"; "
+                + mod_medicao.SONDA
+            )
+            medido = mod_medicao.interpretar(
+                correr(servico, "bash -lc " + shlex.quote(segunda)).texto)
+            contexto["medicao_servico"] = medido
+
+    def conferir_python_da_conta(c):
+        medido = c.get("medicao_servico")
+        if medido is None:
+            return "a conta de serviço não foi medida."
+        return mod_medicao.conferir_python(medido)
+
     def conferir_sudo(_):
         if correr(servico, "sudo -n true").codigo != 0:
             return (f"'{usuario_de_servico}' não consegue usar sudo sem senha. "
@@ -205,7 +247,9 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
         return None
 
     def instalar_castor(_):
-        correr(servico, f"curl -fsSL {INSTALADOR} | sh")
+        py = contexto["python_da_conta"]
+        correr(servico, "bash -lc " + shlex.quote(
+            f"export CASTOR_PYTHON={shlex.quote(py)}; curl -fsSL {INSTALADOR} | sh"))
 
     def conferir_castor(_):
         if correr(servico, mod_conexao.comando_remoto("--versao")).codigo != 0:
@@ -243,13 +287,15 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
               else "a máquina não disse quem é o usuário."),
         Passo("relogio", conferir=lambda c: mod_medicao.conferir_relogio(
             c["medicao"], agora=agora())),
-        Passo("python", conferir=lambda c: mod_medicao.conferir_python(
-            c["medicao"])),
         Passo("usuario_de_servico", fazer=criar_usuario_de_servico,
               conferir=conferir_usuario_de_servico),
         Passo("provar_chave", fazer=provar_chave, conferir=conferir_prova),
         Passo("sudo", exige=("provar_chave",), conferir=conferir_sudo),
-        Passo("instalar_castor", fazer=instalar_castor, exige=("provar_chave",),
+        Passo("python_da_conta", fazer=instalar_python_da_conta,
+              conferir=conferir_python_da_conta,
+              exige=("provar_chave", "sudo")),
+        Passo("instalar_castor", fazer=instalar_castor,
+              exige=("provar_chave", "python_da_conta"),
               conferir=conferir_castor),
         Passo("rede", fazer=subir_rede, conferir=conferir_rede,
               exige=("provar_chave", "sudo")),

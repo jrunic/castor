@@ -118,11 +118,14 @@ def _roteiro(executor, contexto=None, agora=lambda: 1789000000):
 
 def test_roteiro_comeca_pelo_acesso_inicial_e_so_depois_mede():
     nomes = [passo.nome for passo in _roteiro(ConexaoDeMentira())]
-    assert nomes[:5] == ["acesso_inicial", "identidade", "relogio", "python",
-                         "usuario_de_servico"]
-    for esperado in ("provar_chave", "sudo", "instalar_castor", "rede",
+    assert nomes[:5] == ["acesso_inicial", "identidade", "relogio",
+                          "usuario_de_servico", "provar_chave"]
+    for esperado in ("sudo", "python_da_conta", "instalar_castor", "rede",
                      "expiracao"):
         assert esperado in nomes
+    assert "python" not in nomes
+    roteiro = {p.nome: p for p in _roteiro(ConexaoDeMentira())}
+    assert "python_da_conta" in roteiro["instalar_castor"].exige
 
 
 def test_o_primeiro_acesso_repassa_o_terminal_para_a_senha():
@@ -192,6 +195,28 @@ def test_a_prova_da_chave_falha_quando_a_maquina_responde_outro_usuario():
     assert "continua de pé" in queixa
 
 
+def test_instalar_castor_exporta_castor_python_absoluto():
+    executor = ConexaoDeMentira()
+    contexto = {"python_da_conta": "/home/castor/.local/x/python3"}
+    roteiro = {p.nome: p for p in _roteiro(executor, contexto)}
+    roteiro["instalar_castor"].fazer(contexto)
+    assert any(
+        "CASTOR_PYTHON=" in comando and "/home/castor/.local/x/python3" in comando
+        for _, comando, _ in executor.chamadas)
+
+
+def test_python_311_na_conta_nao_instala_castor():
+    executor = ConexaoDeMentira({
+        "usuario=": RESPOSTA_MEDIDA.replace("3.14.0", "3.11.2"),
+    })
+    contexto = {}
+    with pytest.raises(EfeitoNaoConfirmado) as erro:
+        preparar.executar(_roteiro(executor, contexto), contexto,
+                          relatar=lambda t: None)
+    assert "python_da_conta" in str(erro.value)
+    assert not any("curl" in c[1] for c in executor.chamadas)
+
+
 def test_o_roteiro_inteiro_roda_e_nao_chega_a_fechar_o_acesso_inicial():
     """Tracer bullet: do primeiro acesso à rede, com a máquina de mentira."""
     executor = ConexaoDeMentira({
@@ -201,9 +226,9 @@ def test_o_roteiro_inteiro_roda_e_nao_chega_a_fechar_o_acesso_inicial():
     contexto = {}
     provados = preparar.executar(_roteiro(executor, contexto), contexto,
                                  relatar=lambda t: None)
-    assert provados == ["acesso_inicial", "identidade", "relogio", "python",
+    assert provados == ["acesso_inicial", "identidade", "relogio",
                         "usuario_de_servico", "provar_chave", "sudo",
-                        "instalar_castor", "rede"]
+                        "python_da_conta", "instalar_castor", "rede"]
     assert "encerrar_acesso_inicial" not in provados
     assert contexto["url_de_login"].endswith("9z8y")
 
