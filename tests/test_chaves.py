@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -59,8 +60,10 @@ def test_adotar_recusa_chave_que_nao_existe(tmp_path):
 
 
 def test_adotar_devolve_o_caminho_da_privada(tmp_path):
-    (tmp_path / "minha").write_text("PRIVADA\n", encoding="utf-8")
-    (tmp_path / "minha.pub").write_text("ssh-ed25519 AAAA... ana\n", encoding="utf-8")
+    subprocess.run(
+        ["ssh-keygen", "-t", "ed25519", "-f", str(tmp_path / "minha"), "-N", ""],
+        check=True, capture_output=True,
+    )
     assert chaves.adotar(tmp_path / "minha") == tmp_path / "minha"
 
 

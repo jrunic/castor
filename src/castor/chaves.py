@@ -23,6 +23,10 @@ class ChavePublicaAusente(ErroDeChave):
     pass
 
 
+class ChaveInvalida(ErroDeChave):
+    pass
+
+
 CAMINHO_PADRAO = Path("~/.ssh/castor")
 
 
@@ -54,15 +58,30 @@ def criar(caminho: Path, *, comentario: str = "castor",
     return privada
 
 
-def adotar(caminho: Path) -> Path:
+def adotar(caminho: Path, *, executor=subprocess.run) -> Path:
     """Adota uma chave que o usuário já tem."""
     privada = Path(caminho).expanduser()
     if not privada.exists():
         raise ChaveAusente(f"não achei chave em {privada}.")
-    if not publica_de(privada).exists():
+    publica = publica_de(privada)
+    if not publica.exists():
         raise ChavePublicaAusente(
-            f"achei {privada} mas não {publica_de(privada)}. A pública é o que "
+            f"achei {privada} mas não {publica}. A pública é o que "
             f"vai para a máquina cliente; sem ela não dá para instalar o acesso."
+        )
+    prova = executor(
+        ["ssh-keygen", "-y", "-f", str(privada)],
+        capture_output=True, text=True,
+    )
+    if prova.returncode != 0:
+        raise ChaveInvalida(
+            f"{privada} não é uma chave privada que o ssh-keygen consiga ler."
+        )
+    derivada = prova.stdout.split()[:2]
+    declarada = publica.read_text(encoding="utf-8").split()[:2]
+    if derivada != declarada:
+        raise ChaveInvalida(
+            f"a pública em {publica} não corresponde a {privada}."
         )
     return privada
 

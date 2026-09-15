@@ -60,17 +60,38 @@ def test_chave_mostrar_imprime_a_publica(tmp_path, capsys):
     assert "PRIVADA" not in saida
 
 
-def test_chave_usar_anota_o_caminho_no_manifesto(tmp_path, capsys):
+def test_chave_usar_anota_o_caminho_no_cadastro(tmp_path):
     privada = tmp_path / "minha"
-    privada.write_text("PRIVADA\n", encoding="utf-8")
-    (tmp_path / "minha.pub").write_text("ssh-ed25519 AAAA... ana\n",
-                                        encoding="utf-8")
-    manifesto = tmp_path / "castor.json"
-    manifesto.write_text('{"maquinas": {}}', encoding="utf-8")
+    subprocess.run(
+        ["ssh-keygen", "-t", "ed25519", "-f", str(privada), "-N", ""],
+        check=True, capture_output=True,
+    )
+    cadastro = tmp_path / "cadastro.json"
+    cadastro.write_text('{"maquinas": {}}', encoding="utf-8")
 
-    assert principal(["--cadastro", str(manifesto),
+    assert principal(["--cadastro", str(cadastro),
                       "chave", "usar", str(privada)]) == 0
-    assert json.loads(manifesto.read_text(encoding="utf-8"))["chave"] == str(privada)
+    assert json.loads(cadastro.read_text(encoding="utf-8"))["chave"] == str(privada)
+
+
+def test_chave_usar_com_pub_que_nao_bate_recusa(tmp_path, capsys):
+    boa = tmp_path / "boa"
+    subprocess.run(
+        ["ssh-keygen", "-t", "ed25519", "-f", str(boa), "-N", ""],
+        check=True, capture_output=True,
+    )
+    ruim = tmp_path / "ruim"
+    subprocess.run(
+        ["ssh-keygen", "-t", "ed25519", "-f", str(ruim), "-N", ""],
+        check=True, capture_output=True,
+    )
+    (tmp_path / "boa.pub").write_text(
+        (tmp_path / "ruim.pub").read_text(encoding="utf-8"), encoding="utf-8")
+    cadastro = tmp_path / "cadastro.json"
+    cadastro.write_text('{"maquinas": {}}', encoding="utf-8")
+    assert principal(["--cadastro", str(cadastro),
+                      "chave", "usar", str(boa)]) == 1
+    assert "chave" not in json.loads(cadastro.read_text(encoding="utf-8"))
 
 
 def test_chave_usar_sem_a_publica_ao_lado_falha_sem_sujar_o_manifesto(tmp_path,
