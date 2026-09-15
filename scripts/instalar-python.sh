@@ -22,7 +22,7 @@ if [ -z "$TAR" ]; then
     URL="${CASTOR_PYTHON_URL:-}"
     if [ -z "$URL" ]; then
         URL="$(curl -fsSL --connect-timeout 15 https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest |
-            tr '"' '\n' | grep "cpython-3.14" | grep "${CPU}-${OS}-install_only.tar.gz" |
+            tr '"' '\n' | grep '^https://' | grep "cpython-3.14" | grep "${CPU}-${OS}-install_only.tar.gz" |
             grep -v freethreaded | grep -v musl | sed -n '1p')"
         [ -n "$URL" ] || falhar "não achei tarball 3.14 para ${CPU}-${OS}."
     fi
@@ -41,7 +41,7 @@ fi
 mkdir -p "$DEST"
 chmod 700 "$DEST"
 tar -xzf "$TAR" -C "$DEST"
-PY="$(find "$DEST" -type f -name python3 | sed -n '1p')"
+PY="$(find "$DEST" \( -type f -o -type l \) -name python3 | sed -n '1p')"
 [ -n "$PY" ] || falhar "o tarball não trouxe python3."
 chmod 755 "$PY"
 printf '%s\n' "$PY"

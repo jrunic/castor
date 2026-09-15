@@ -376,6 +376,11 @@ def test_o_irmao_extrai_tarball_em_xdg_data(tmp_path):
     assert Path(concluido.stdout.strip()).exists()
 
 
+def test_o_irmao_so_aceita_url_https_do_cpython():
+    """A API lista o nome do arquivo antes da URL; o nome não é baixável."""
+    assert "grep '^https://'" in IRMAO.read_text(encoding="utf-8")
+
+
 def test_o_irmao_baixa_quando_a_url_esta_declarada(tmp_path):
     tar = _tarball_python(tmp_path)
     mapa = {
