@@ -44,8 +44,11 @@ castor maquina preparar <nome> --endereco <endereço> --usuario-inicial <usuári
 castor maquina testar <nome>
 ```
 
-`configurar` pergunta chave, nome, SMTP e Tailscale, e grava o cadastro. O guia
-tem a sequência inteira.
+`configurar` se apresenta, faz 3 perguntas (chave, nome, aviso por e-mail)
+com defaults que o Enter aceita, mostra **a prévia do que vai fazer** e só
+então age: instala o Tailscale se faltar e grava cadastro e cofre.
+Responder `n` na prévia cancela sem fazer coisa nenhuma — nem instalar,
+nem criar chave. O guia tem a sequência inteira.
 
 O passo a passo está em
 [`docs/guias/primeira-maquina.md`](docs/guias/primeira-maquina.md).

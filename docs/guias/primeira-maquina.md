@@ -36,10 +36,16 @@ interpretador no comando.
 castor configurar
 ```
 
-O comando pergunta se cria a chave ou se usa uma que você aponta, o nome desta
-máquina, se você quer aviso por e-mail (Google ou outro) e instala o Tailscale
-se ele não estiver no PATH. Só grava o cadastro e o cofre **depois** da rede
-estar de pé. Não cole JSON à mão nesta etapa.
+O comando se apresenta e faz três perguntas — a chave (cria uma nova, ou
+aceita o caminho de uma que você já tem), o nome desta máquina (Enter usa o
+hostname) e se você quer aviso por e-mail (Google ou outro). Toda pergunta
+marca o que o Enter aceita.
+
+Depois das perguntas, ele mostra **a prévia do que vai fazer** — criar
+chave, onde vai gravar o cadastro e o cofre, instalar o Tailscale se faltar.
+Nada acontece antes de você confirmar com Enter; `n` cancela e deixa a
+máquina exatamente como estava. Confirmou, ele instala o que faltar e grava.
+Não cole JSON à mão nesta etapa.
 
 ## 3. Conferir
 
