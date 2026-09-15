@@ -1,3 +1,4 @@
+import shutil
 import socket
 import sys
 from pathlib import Path
@@ -12,7 +13,17 @@ entrada = sys.stdin
 
 
 def garantir_rede(**_):
-    return None
+    import os
+    import platform
+    import subprocess
+    from castor import rede as mod_rede
+    sistema = "darwin" if platform.system() == "Darwin" else platform.system().lower()
+    tem_sudo = os.geteuid() == 0 or bool(shutil.which("sudo"))
+    def esperar(url):
+        print(f"abra no navegador: {url}")
+    mod_rede.garantir_na_principal(
+        sistema=sistema, which=shutil.which, executor=subprocess.run,
+        tem_sudo=tem_sudo, esperar_login=esperar)
 
 
 def _ler(pergunta: str) -> str:

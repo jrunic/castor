@@ -12,6 +12,8 @@ conferência roda na principal, olhando a cliente, e nunca na própria máquina.
 """
 import json
 import re
+import shutil
+import socket
 
 URL_DE_LOGIN = re.compile(r"https://login\.tailscale\.com/\S+")
 
@@ -67,3 +69,43 @@ def esta_rodando(texto_json: str) -> bool:
         return json.loads(texto_json).get("BackendState") == "Running"
     except (json.JSONDecodeError, AttributeError, TypeError):
         return False
+
+
+def instalar_cliente(*, sistema: str, executor, tem_sudo: bool, which=shutil.which) -> None:
+    if not tem_sudo:
+        raise ErroDeRede("preciso de sudo uma vez para instalar o Tailscale.")
+    if sistema == "darwin":
+        executor(["curl", "-fsSL", "-o", "/tmp/tailscale.pkg",
+                  "https://pkgs.tailscale.com/stable/tailscale-latest.pkg"])
+        executor(["sudo", "installer", "-pkg", "/tmp/tailscale.pkg", "-target", "/"])
+        return
+    if sistema == "linux":
+        if not which("apt-get"):
+            raise ErroDeRede("não achei apt-get. Instale o Tailscale e rode de novo.")
+        executor(["sudo", "apt-get", "install", "-y", "tailscale"])
+        return
+    raise ErroDeRede(f"não sei instalar Tailscale em {sistema}.")
+
+
+def garantir_na_principal(*, sistema, which, executor, tem_sudo, esperar_login) -> None:
+    binario = which("tailscale")
+    if not binario:
+        instalar_cliente(sistema=sistema, executor=executor, tem_sudo=tem_sudo,
+                         which=which)
+        binario = which("tailscale")
+        if not binario:
+            raise ErroDeRede(
+                "instalei o Tailscale mas o comando nao apareceu no PATH.")
+    estado = executor([binario, "status", "--json"], capture_output=True, text=True)
+    if esta_rodando(estado.stdout):
+        return
+    saida_up = executor(montar_subida(socket.gethostname()),
+                        capture_output=True, text=True)
+    texto = (saida_up.stdout or "") + (saida_up.stderr or "")
+    url = extrair_url_de_login(texto)
+    if not url:
+        raise ErroDeRede("o tailscale up nao deu URL de login.")
+    esperar_login(url)
+    estado = executor([binario, "status", "--json"], capture_output=True, text=True)
+    if not esta_rodando(estado.stdout):
+        raise ErroDeRede("o Tailscale nao ficou em Running depois do login.")
