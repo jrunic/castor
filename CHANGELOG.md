@@ -11,15 +11,20 @@ tags: [changelog]
 
 # Histórico de versões
 
-## Não publicado — cadastro, configurar, ensaio
+## 0.3.0 — 15/09/2026
 
-- A superfície diz **cadastro** no lugar de manifesto, e **`--ensaio`** no
-  lugar de `--seco`. Sem alias.
-- Sem Python ≥3.12, o instalador extrai um tarball 3.14 no XDG data.
-- `castor configurar` prepara a principal (chave, SMTP, Tailscale) e só grava
-  depois da rede de pé.
-- `maquina preparar` instala Python 3.14 no XDG da conta de serviço se ela
-  não tiver 3.12; o cadastro grava esse interpretador.
+**Mudança de superfície, sem alias:** o arquivo-mestre se chama **cadastro**
+(`--cadastro`, `CASTOR_CADASTRO`, default `~/.config/castor/cadastro.json`,
+lendo `castor.json` antigo), e o ensaio é **`--ensaio`** (antes `--seco`).
+
+- **`castor configurar`** prepara a principal: chave (criar ou adotar, com
+  prova por `ssh-keygen`), SMTP (Google ou outro, cofre 600), Tailscale
+  (instala se faltar, login por URL; grava só com a rede `Running`).
+- **Sem Python ≥3.12, o instalador baixa o 3.14** (*python-build-standalone*)
+  para o XDG data e crava esse interpretador no wrapper.
+- **`maquina preparar` instala Python 3.14 no XDG da conta de serviço** se
+  ela não tiver 3.12; o cadastro da cliente grava esse interpretador.
+- EOF no Enter da expiração não aborta mais o cadastro da cliente.
 
 ## 0.2.1 — 13/09/2026
 
