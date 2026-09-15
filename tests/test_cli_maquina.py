@@ -214,6 +214,19 @@ def test_preparar_sem_chave_declarada_manda_criar_a_chave(tmp_path, capsys):
     assert "castor chave criar" in capsys.readouterr().err
 
 
+def test_preparar_com_stdin_fechado_ainda_cadastra(tmp_path, capsys, monkeypatch):
+    """Pipe/EOF no Enter da expiração não pode abortar depois do roteiro pronto."""
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch, expiracao=None)
+    monkeypatch.setattr("builtins.input", lambda *a: (_ for _ in ()).throw(EOFError()))
+    assert principal(["--cadastro", str(caminho), "maquina", "preparar",
+                      "computador-auxiliar", "--endereco",
+                      "computador-auxiliar.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    assert "computador-auxiliar" in json.loads(
+        caminho.read_text(encoding="utf-8"))["maquinas"]
+
+
 def test_preparar_cadastra_a_maquina_e_avisa_o_que_falta(tmp_path, capsys,
                                                          monkeypatch):
     caminho = _com_chave(tmp_path)

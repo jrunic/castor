@@ -977,6 +977,13 @@ def _status_da_rede(binario: str) -> str:
                           capture_output=True, text=True).stdout
 
 
+def _aguardar(mensagem: str) -> None:
+    try:
+        input(mensagem)
+    except EOFError:
+        pass
+
+
 def _conduzir_expiracao(nome: str) -> int:
     """O castor instrui e confere; desativar é do painel, por desenho do tailscale.
 
@@ -993,7 +1000,7 @@ def _conduzir_expiracao(nome: str) -> int:
           f"  1. Abra https://login.tailscale.com/admin/machines\n"
           f"  2. Ache a máquina '{nome}'\n"
           f"  3. No menu dela, escolha 'Disable key expiry'\n")
-    input("Feito isso, aperte Enter para eu conferir. ")
+    _aguardar("Feito isso, aperte Enter para eu conferir. ")
     try:
         expiracao = mod_rede.expiracao_de(_status_da_rede(tailscale), nome)
     except (mod_rede.ErroDeRede, ValueError) as erro:
@@ -1036,7 +1043,7 @@ def _preparar_maquina(opcoes) -> int:
         print(f"\nAbra este endereço no navegador desta máquina para ligar "
               f"'{opcoes.nome}' à sua rede privada:\n\n  "
               f"{contexto['url_de_login']}\n")
-        input("Depois de autorizar, aperte Enter. ")
+        _aguardar("Depois de autorizar, aperte Enter. ")
 
     codigo = _conduzir_expiracao(opcoes.nome)
     if codigo != 0:
