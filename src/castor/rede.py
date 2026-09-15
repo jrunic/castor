@@ -28,12 +28,21 @@ class NoDesconhecido(ErroDeRede):
 
 
 def montar_subida(nome_na_rede: str) -> list[str]:
-    return ["tailscale", "up", "--hostname", nome_na_rede]
+    return ["tailscale", "up", "--json", "--timeout=20s",
+            "--hostname", nome_na_rede]
 
 
 def extrair_url_de_login(texto: str) -> str | None:
+    bruto = texto.strip()
+    try:
+        dados = json.loads(bruto)
+        url = dados.get("AuthURL") if isinstance(dados, dict) else None
+        if url:
+            return url
+    except json.JSONDecodeError:
+        pass
     achado = URL_DE_LOGIN.search(texto)
-    return achado.group(0) if achado else None
+    return achado.group(0).rstrip('",') if achado else None
 
 
 def _peer(texto_json: str, nome_na_rede: str) -> dict:

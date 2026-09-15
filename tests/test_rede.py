@@ -30,13 +30,23 @@ def test_extrai_a_url_de_login_que_o_comando_imprimiu():
         "https://login.tailscale.com/a/1a2b3c4d5e6f"
 
 
+def test_extrai_authurl_do_json_sem_tty():
+    texto = json.dumps({
+        "AuthURL": "https://login.tailscale.com/a/64f6fd201296d",
+        "BackendState": "NeedsLogin",
+    })
+    assert rede.extrair_url_de_login(texto) == \
+        "https://login.tailscale.com/a/64f6fd201296d"
+
+
 def test_sem_url_devolve_nada_em_vez_de_inventar():
     assert rede.extrair_url_de_login("Success.") is None
 
 
 def test_subida_leva_o_nome_da_maquina():
-    assert rede.montar_subida("computador-auxiliar") == ["tailscale", "up", "--hostname",
-                                             "computador-auxiliar"]
+    assert rede.montar_subida("computador-auxiliar") == [
+        "tailscale", "up", "--json", "--timeout=20s",
+        "--hostname", "computador-auxiliar"]
 
 
 def test_expiracao_ativa_e_lida_na_entrada_de_peer():
