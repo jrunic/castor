@@ -87,22 +87,44 @@ CAMINHOS_DO_BINARIO = ("/usr/local/bin/tailscale", "/opt/homebrew/bin/tailscale"
 
 
 def achar_binario(which=shutil.which, existe=Path.exists) -> str | None:
-    """O PATH do ssh não-interativo não é o PATH de quem instalou o app."""
+    """O PATH do ssh não-interativo não é o PATH de quem instalou o app.
+
+    Medido no macbook do Walter: invocado por symlink, o CLI do app crasha
+    com "bundleIdentifier is unknown to the registry" — o caminho que volta
+    é sempre resolvido ao alvo real.
+    """
     achado = which("tailscale")
     if achado:
-        return achado
+        return str(Path(achado).resolve())
     for caminho in CAMINHOS_DO_BINARIO:
         if existe(Path(caminho)):
-            return caminho
+            return str(Path(caminho).resolve())
     return None
+
+
+VERSAO_DO_TAILSCALE = "1.102.4"
+URL_DO_PKG = (f"https://pkgs.tailscale.com/stable/"
+              f"Tailscale-{VERSAO_DO_TAILSCALE}-macos.pkg")
 
 
 def instalar_cliente(*, sistema: str, executor, tem_sudo: bool, which=shutil.which) -> None:
     if not tem_sudo:
         raise ErroDeRede("preciso de sudo uma vez para instalar o Tailscale.")
     if sistema == "darwin":
-        executor(["curl", "-fsSL", "-o", "/tmp/tailscale.pkg",
-                  "https://pkgs.tailscale.com/stable/tailscale-latest.pkg"])
+        # URL versionada medida em 16/09/2026: a 'tailscale-latest.pkg' do
+        # README deu 404; o pkg oficial é universal (sem sufixo de CPU) e tem
+        # .sha256 publicado na mesma pasta. Sem soma conferida, não instala.
+        executor(["curl", "-fsSL", "--connect-timeout", "15", "-o",
+                  "/tmp/tailscale.pkg", URL_DO_PKG])
+        executor(["curl", "-fsSL", "--connect-timeout", "15", "-o",
+                  "/tmp/tailscale.pkg.sha256", f"{URL_DO_PKG}.sha256"])
+        conferido = executor(["sh", "-c",
+                              "cd /tmp && shasum -a 256 -c tailscale.pkg.sha256"],
+                             capture_output=True, text=True)
+        if conferido.returncode != 0:
+            raise ErroDeRede(
+                "o pacote do Tailscale baixado não bate com a soma publicada "
+                "em pkgs.tailscale.com. Nada foi instalado.")
         executor(["sudo", "installer", "-pkg", "/tmp/tailscale.pkg", "-target", "/"])
         return
     if sistema == "linux":

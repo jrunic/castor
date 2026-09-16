@@ -112,6 +112,28 @@ def test_instalar_darwin_sem_sudo_recusa():
     assert "sudo" in str(erro.value)
 
 
+def test_instalar_darwin_com_soma_divergente_nao_instala():
+    """Walter, macOS: a URL 'latest' deu 404; e pkg sem soma conferida não
+    ganha sudo installer."""
+    chamadas = []
+
+    def executor(cmd, **_):
+        chamadas.append(cmd)
+        if "shasum" in cmd:
+            return _Saida(codigo=1, stderr="FAILED")
+        return _Saida()
+
+    with pytest.raises(ErroDeRede) as erro:
+        rede.instalar_cliente(sistema="darwin", executor=executor, tem_sudo=True)
+    assert "soma" in str(erro.value)
+    assert not any("installer" in c for c in chamadas)
+
+
+def test_a_url_do_pkg_e_a_versionada_medida():
+    assert rede.URL_DO_PKG == ("https://pkgs.tailscale.com/stable/"
+                               "Tailscale-1.102.4-macos.pkg")
+
+
 def test_instalar_linux_sem_apt_recusa():
     with pytest.raises(ErroDeRede) as erro:
         rede.instalar_cliente(
@@ -134,6 +156,19 @@ def test_binario_do_path_vence_os_caminhos_conhecidos():
     assert rede.achar_binario(
         which=lambda nome: "/usr/bin/tailscale" if nome == "tailscale" else None,
         existe=lambda caminho: False) == "/usr/bin/tailscale"
+
+
+def test_o_binario_do_path_e_resolvido_quando_e_symlink(tmp_path):
+    """Walter, macOS: CLI via symlink crasha — 'bundleIdentifier is unknown
+    to the registry'. Só o caminho real do app é executável."""
+    real = tmp_path / "Tailscale.app" / "Contents" / "MacOS" / "Tailscale"
+    real.parent.mkdir(parents=True)
+    real.write_text("#!/bin/sh\n")
+    atalho = tmp_path / "bin" / "tailscale"
+    atalho.parent.mkdir(parents=True)
+    atalho.symlink_to(real)
+    achado = rede.achar_binario(which=lambda n: str(atalho) if n == "tailscale" else None)
+    assert achado == str(real)
 
 
 def test_garantir_com_binario_ja_rodando_nao_instala():
