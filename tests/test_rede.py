@@ -119,7 +119,7 @@ def test_instalar_darwin_com_soma_divergente_nao_instala():
 
     def executor(cmd, **_):
         chamadas.append(cmd)
-        if "shasum" in cmd:
+        if any("shasum" in str(parte) for parte in cmd):
             return _Saida(codigo=1, stderr="FAILED")
         return _Saida()
 
