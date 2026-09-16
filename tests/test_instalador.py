@@ -330,6 +330,58 @@ def test_castor_python_manda_quando_declarado(tmp_path):
     assert sys.executable in concluido.stdout
 
 
+def test_acha_python_fora_do_path_por_caminho_conhecido(tmp_path):
+    brew = tmp_path / "Homebrew Com Espaco" / "bin"
+    brew.mkdir(parents=True)
+    ponte = brew / "python3.12"
+    ponte.symlink_to(sys.executable)
+    concluido = instalar(tmp_path, PATH="/usr/bin:/bin",
+                         CASTOR_BINS_EXTRA=str(brew),
+                         XDG_DATA_HOME=str(tmp_path / "data"),
+                         CASTOR_PYTHON_ARTEFATO=str(_tarball_python(tmp_path)),
+                         CASTOR_ARTEFATO=str(construir(tmp_path)),
+                         CASTOR_DESTINO=str(tmp_path / "bin"))
+    assert concluido.returncode == 0, concluido.stderr
+    assert str(brew) in concluido.stdout
+
+
+def test_o_pipe_acha_o_irmao_da_mesma_origem(tmp_path):
+    """O caminho documentado no README: curl do instalador | sh.
+
+    Medido no macbook do Walter (castor 0.3.0): no pipe, $0 é 'sh' e o
+    irmão ao lado não existe — o fallback de Python nunca rodava.
+    """
+    artefato = construir(tmp_path)
+    tar = _tarball_python(tmp_path)
+    mapa = {
+        "/instalar.sh": INSTALADOR.read_bytes(),
+        "/instalar-python.sh": IRMAO.read_bytes(),
+        "/instalar-python.sh.sha256": hashlib.sha256(
+            IRMAO.read_bytes()).hexdigest().encode() + b"\n",
+        "/cpython.tgz": tar.read_bytes(),
+        "/cpython.tgz.sha256": (tar.parent / "cpython.tgz.sha256").read_bytes(),
+        "/castor.pyz": artefato.read_bytes(),
+        "/castor.pyz.sha256": hashlib.sha256(
+            artefato.read_bytes()).hexdigest().encode() + b"\n",
+    }
+    servidor, _ = servidor_de_arquivos(mapa)
+    base = f"http://127.0.0.1:{servidor.server_port}"
+    data = tmp_path / "data"
+    try:
+        concluido = subprocess.run(
+            ["sh", "-c",
+             f"curl -fsSL {base}/instalar.sh | "
+             f"CASTOR_URL={base}/castor.pyz CASTOR_PYTHON_URL={base}/cpython.tgz "
+             f"XDG_DATA_HOME={data} CASTOR_DESTINO={tmp_path / 'bin'} sh"],
+            env={**os.environ, "PATH": "/usr/bin:/bin"},
+            capture_output=True, text=True)
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+    assert concluido.returncode == 0, concluido.stderr
+    assert (data / "castor/python/python/install/bin/python3").exists()
+
+
 def test_sem_nenhum_python_bom_continua_recusando(tmp_path):
     so_velho = tmp_path / "sovelho"
     so_velho.mkdir(exist_ok=True)
