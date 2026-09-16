@@ -11,7 +11,7 @@ tags: [changelog]
 
 # Histórico de versões
 
-## Não publicado — instalação real de mentorado
+## 0.4.0 — 16/09/2026
 
 Medido nas máquinas do Walter (macOS 26.6.2, castor 0.3.0) e corrigido:
 
