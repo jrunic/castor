@@ -251,8 +251,11 @@ def test_preparar_mostra_a_url_de_login_capturada(tmp_path, capsys, monkeypatch)
     assert "9z8y" in capsys.readouterr().out
 
 
-def test_expiracao_ainda_ativa_nao_anuncia_sucesso_nem_cadastra(tmp_path, capsys,
-                                                                monkeypatch):
+def test_expiracao_ativa_deixa_a_cliente_cadastrada_com_pendencia(tmp_path,
+                                                                  capsys,
+                                                                  monkeypatch):
+    """Walter, macOS: o código 6 da expiração abortava ANTES de gravar — a
+    cliente técnica estava pronta e o cadastro, vazio."""
     caminho = _com_chave(tmp_path)
     _preparo_de_mentira(monkeypatch, expiracao="2026-12-16T13:48:07Z")
     assert principal(["--cadastro", str(caminho), "maquina", "preparar",
@@ -260,7 +263,24 @@ def test_expiracao_ainda_ativa_nao_anuncia_sucesso_nem_cadastra(tmp_path, capsys
                       "--usuario-inicial", "ubuntu"]) == 6
     erro = capsys.readouterr().err
     assert "2026-12-16" in erro
-    assert json.loads(caminho.read_text(encoding="utf-8"))["maquinas"] == {}
+    gravado = json.loads(caminho.read_text(encoding="utf-8"))["maquinas"]
+    assert gravado["computador-auxiliar"]["papel"] == "cliente"
+
+
+def test_reexecucao_depois_da_pendencia_fecha_o_ciclo(tmp_path, capsys,
+                                                      monkeypatch):
+    caminho = _com_chave(tmp_path)
+    _preparo_de_mentira(monkeypatch, expiracao="2026-12-16T13:48:07Z")
+    assert principal(["--cadastro", str(caminho), "maquina", "preparar",
+                      "computador-auxiliar", "--endereco", "computador-auxiliar.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 6
+    primeiros = json.loads(caminho.read_text(encoding="utf-8"))["maquinas"]
+
+    _preparo_de_mentira(monkeypatch, expiracao=None)
+    assert principal(["--cadastro", str(caminho), "maquina", "preparar",
+                      "computador-auxiliar", "--endereco", "computador-auxiliar.exemplo.test",
+                      "--usuario-inicial", "ubuntu"]) == 0
+    assert json.loads(caminho.read_text(encoding="utf-8"))["maquinas"] == primeiros
 
 
 def test_preparar_relata_o_fuso_da_maquina_quando_difere(tmp_path, capsys,

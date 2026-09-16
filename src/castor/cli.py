@@ -1035,16 +1035,15 @@ def _preparar_maquina(opcoes) -> int:
               f"{contexto['url_de_login']}\n")
         _aguardar("Depois de autorizar, aperte Enter. ")
 
-    codigo = _conduzir_expiracao(opcoes.nome)
-    if codigo != 0:
-        return codigo
-
     medido = contexto["medicao"]
     da_conta = contexto["medicao_servico"]
     nota = mod_medicao.conferir_fuso(medido, fuso_daqui=time.strftime("%z"))
     if nota:
         print(f"[castor] {nota}")
 
+    # Grava ANTES da conferência de expiração: a cliente tecnicamente pronta
+    # não pode sumir do cadastro porque o painel do Tailscale segue pendente
+    # (medido no macbook do Walter — código 6 abortava com cadastro vazio).
     maquina = mod_manifesto.Maquina(
         nome=opcoes.nome, usuario=opcoes.usuario_de_servico,
         casa=f"/home/{opcoes.usuario_de_servico}", sistema=medido.sistema,
@@ -1060,13 +1059,26 @@ def _preparar_maquina(opcoes) -> int:
     # Relê: o manifesto acabou de ser gravado com a máquina nova, e é dela que a
     # resolução de $HOME precisa.
     declarados = mod_manifesto.ler(Path(opcoes.cadastro))
+    falha_de_entrega = None
     if servico_de_aviso in declarados.dados.get("servicos", {}):
         try:
             _entregar(declarados, servico_de_aviso, opcoes.nome, destino_ssh)
         except (mod_conexao.FalhaDeConexao, mod_cofre.ErroDeCofre) as erro:
-            print(f"a máquina ficou pronta, mas a entrega do aviso falhou: "
-                  f"{erro}", file=sys.stderr)
-            return 5
+            falha_de_entrega = erro
+
+    codigo = _conduzir_expiracao(opcoes.nome)
+    if falha_de_entrega is not None:
+        print(f"a máquina '{opcoes.nome}' está pronta e cadastrada, mas a "
+              f"entrega do aviso falhou: {falha_de_entrega}", file=sys.stderr)
+        return 5
+    if codigo != 0:
+        print(f"a máquina '{opcoes.nome}' está pronta e cadastrada; ficou "
+              f"pendente: desativar a expiração da chave de nó no painel e "
+              f"rodar o preparar de novo para conferir.", file=sys.stderr)
+        return codigo
+
+    entregou_aviso = servico_de_aviso in declarados.dados.get("servicos", {})
+    if entregou_aviso:
         print(f"\n'{opcoes.nome}' está pronta, cadastrada e sabendo avisar por "
               f"e-mail quando algo falhar.")
         return 0
