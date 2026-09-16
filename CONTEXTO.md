@@ -156,8 +156,9 @@ docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 põe 3.14 no XDG data. Última release publicada: **0.2.0**. Toda mudança de
 comportamento entra no `CHANGELOG.md` no mesmo commit.
 
-Antes de aceitar o ciclo `configurar-principal`: medir `castor configurar`
-nesta máquina. O download do 3.14 contra o GitHub não passou pela suíte.
+Antes de aceitar o ciclo `instalacao-real`: a release precisa anexar os
+irmãos (`instalar-python.sh`, `instalar-node.sh` + `.sha256` de ambos) ao
+lado do pyz — o `curl | sh` deriva o irmão da origem do pyz.
 
 ## Referências
 
