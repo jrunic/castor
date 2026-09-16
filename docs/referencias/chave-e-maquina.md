@@ -137,6 +137,7 @@ primeiro comando que rodar.
 | `provar_chave` | — | a conexão como usuário de serviço responde o nome dele |
 | `sudo` | `provar_chave` | `sudo -n true` passa |
 | `python_da_conta` | `provar_chave`, `sudo` | 3.12 ou mais novo **nessa conta**; instala 3.14 no XDG dela se faltar |
+| `node_da_conta` | `provar_chave`, `sudo` | **só com `--node`**: Node ≥22 na conta; sem, instala 22 LTS no XDG dela |
 | `instalar_castor` | `provar_chave`, `python_da_conta` | `castor --versao` responde |
 | `rede` | `provar_chave`, `sudo` | — |
 | `expiracao` | — | conduzido pelo comando, conferido na principal |

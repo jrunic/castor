@@ -11,6 +11,29 @@ tags: [changelog]
 
 # Histórico de versões
 
+## Não publicado — instalação real de mentorado
+
+Medido nas máquinas do Walter (macOS 26.6.2, castor 0.3.0) e corrigido:
+
+- **`curl | sh` acha o irmão.** No pipe, `$0` é `sh` e nada existe ao lado;
+  o irmão agora é baixado da **mesma origem do pyz** (release, com
+  `.sha256` publicado junto). O instalador do Python continua achando
+  `instalar-python.sh` ao lado quando a execução é do checkout.
+- **Python fora do PATH não-interativo é achado** — `CASTOR_BINS_EXTRA`
+  aponta pastas extras (Homebrew: `/opt/homebrew/bin`), com caminho
+  contendo espaço.
+- **Tailscale no macOS:** a URL `tailscale-latest.pkg` media 404 — a
+  instalar usa a versionada `Tailscale-1.102.4-macos.pkg` com soma
+  conferida antes do `installer`; binário do app é resolvido ao caminho
+  real (invocado por symlink, o CLI crashava).
+- **`preparar` grava a cliente antes da pendência de expiração.** Código 6
+  não apaga mais o cadastro; a saída nomeia a pendência e a reexecução a
+  fecha.
+- **Node 22 LTS opcional:** pergunta no `configurar` (default `n`) e flag
+  `--node` no `preparar`. Mesmo padrão do Python: XDG 0700, tarball com
+  soma (`SHASUMS256.txt` do nodejs.org), versão cavada
+  (`22.23.2`), irmão `instalar-node.sh` anexo da release.
+
 ## 0.3.0 — 15/09/2026
 
 **Mudança de superfície, sem alias:** o arquivo-mestre se chama **cadastro**

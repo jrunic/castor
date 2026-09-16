@@ -36,10 +36,11 @@ interpretador no comando.
 castor configurar
 ```
 
-O comando se apresenta e faz três perguntas — a chave (cria uma nova, ou
+O comando se apresenta e faz quatro perguntas — a chave (cria uma nova, ou
 aceita o caminho de uma que você já tem), o nome desta máquina (Enter usa o
-hostname) e se você quer aviso por e-mail (Google ou outro). Toda pergunta
-marca o que o Enter aceita.
+hostname), se você quer aviso por e-mail (Google ou outro) e se quer
+**Node 22 LTS** (por default, não; responda só se um serviço seu precisa).
+Toda pergunta marca o que o Enter aceita.
 
 Depois das perguntas, ele mostra **a prévia do que vai fazer** — criar
 chave, onde vai gravar o cadastro e o cofre, instalar o Tailscale se faltar.
@@ -71,16 +72,20 @@ O comando vai, em ordem:
    ele e configurar o sudo. Uma senha pedida, uma vez.
 4. **Provar a chave nova** numa conexão separada, antes de depender dela.
 5. **Python na conta de serviço.** Se ela não tiver 3.12 ou mais novo, instala
-   o 3.14 no XDG dela. Só então instala o castor, cravando esse interpretador.
+   o 3.14 no XDG dela. Com `--node`, faz o mesmo com Node 22 LTS se faltar.
+   Só então instala o castor, cravando esse interpretador.
 6. **Instalar o Tailscale e ligar a máquina à sua rede privada.** Ele imprime um
    endereço; abra no navegador **desta** máquina, onde você já está logado no
    Tailscale, e autorize. Um clique.
-7. **Entregar a credencial de aviso**, se o cofre estiver declarado.
+7. **Gravar a máquina no cadastro e entregar a credencial de aviso**, se o
+   cofre estiver declarado.
 8. **Conduzir a desativação da expiração da chave de nó.** Por padrão o
    Tailscale faz cada máquina expirar a cada alguns meses — quando isso
    acontece, a máquina sai da rede e o seu acesso a ela vai junto. Desativar
    isso só se faz no painel do Tailscale; o castor mostra o caminho, espera, e
-   **confere**. Se continuar ativa, ele não anuncia sucesso.
+   **confere**. Se continuar ativa, ele sai com código 6 e deixa a pendência
+   nomeada — a máquina **fica cadastrada**; reexecute o `preparar` depois de
+   desativar no painel para conferir.
 
 Se algum passo rodar sem produzir efeito, o comando para ali e diz qual foi. A
 máquina continua acessível pelo caminho anterior — nenhum passo que fecha um

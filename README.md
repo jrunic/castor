@@ -28,9 +28,11 @@ principal.
 curl -fsSL https://raw.githubusercontent.com/jrunic/castor/main/scripts/instalar.sh | sh
 ```
 
-Instala em `~/.local/bin/castor`. Sem Python 3.12+, o instalador põe o 3.14 no
-XDG. Confere a soma do que baixou e que o comando responde depois. Se qualquer
-uma falhar, ele não instala e não anuncia sucesso.
+Instala em `~/.local/bin/castor`. Sem Python 3.12+, o instalador baixa o
+irmão `instalar-python.sh` **da mesma release** (com soma publicada) e põe o
+3.14 no XDG. Acha Python também fora do PATH não-interativo (Homebrew).
+Confere a soma de tudo que baixa; qualquer falha, não instala e não anuncia
+sucesso.
 
 A soma pega arquivo truncado e artefato trocado sem que a soma fosse trocada
 junto. Ela **não** cobre origem comprometida — arquivo e soma vêm do mesmo
@@ -44,11 +46,20 @@ castor maquina preparar <nome> --endereco <endereço> --usuario-inicial <usuári
 castor maquina testar <nome>
 ```
 
-`configurar` se apresenta, faz 3 perguntas (chave, nome, aviso por e-mail)
-com defaults que o Enter aceita, mostra **a prévia do que vai fazer** e só
-então age: instala o Tailscale se faltar e grava cadastro e cofre.
-Responder `n` na prévia cancela sem fazer coisa nenhuma — nem instalar,
-nem criar chave. O guia tem a sequência inteira.
+`configurar` se apresenta, faz 4 perguntas (chave, nome, aviso por e-mail,
+Node 22 LTS — esse por default é **n**) com defaults que o Enter aceita,
+mostra **a prévia do que vai fazer** e só então age: instala o Tailscale se
+faltar e grava cadastro e cofre. Responder `n` na prévia cancela sem fazer
+coisa nenhuma. O guia tem a sequência inteira.
+
+Na cliente que vai rodar serviço sobre Node (malote ouvinte, por exemplo),
+acrescente `--node` ao `preparar` — ele instala Node 22 LTS no XDG da conta
+de serviço, no mesmo padrão do Python. Sem a flag, Node não é baixado.
+
+O `preparar` grava a cliente no cadastro ao fim dos passos técnicos. Se a
+expiração da chave de nó do Tailscale seguir ativa no painel, o comando sai
+com código 6 **e a cliente fica cadastrada**, com a pendência nomeada na
+saída — reexecute o `preparar` depois de desativar no painel para conferir.
 
 O passo a passo está em
 [`docs/guias/primeira-maquina.md`](docs/guias/primeira-maquina.md).
