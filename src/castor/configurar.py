@@ -167,7 +167,7 @@ def _gravar_cofre(smtp: dict) -> Path:
 
 
 def montar_plano(chave: str, nome: str, smtp: dict | None, cadastro: Path,
-                 *, sonda_binario=None) -> dict:
+                 *, sonda_binario=None, quer_node: bool = False) -> dict:
     destino = origem_para_gravar(cadastro) if cadastro.name == "castor.json" else cadastro
     nova = chave == "c"
     return {
@@ -176,6 +176,7 @@ def montar_plano(chave: str, nome: str, smtp: dict | None, cadastro: Path,
         "nome": nome,
         "smtp": smtp,
         "cadastro": destino,
+        "node": quer_node,
         "instalar_tailscale": (sonda_binario or _sonda_padrao)() is None,
     }
 
@@ -192,6 +193,9 @@ def previa(plano: dict) -> list[str]:
         linhas.append(f"gravar o cofre com {len(plano['smtp'])} chaves SMTP "
                       "(a senha nunca aparece na tela)")
         linhas.append("ligar o aviso por e-mail")
+    if plano["node"]:
+        linhas.append("instalar Node 22 LTS no XDG (baixando o instalador "
+                      "da release, com a soma conferida)")
     if plano["instalar_tailscale"]:
         linhas.append("instalar o Tailscale, pedindo sudo uma vez")
     return linhas
@@ -208,6 +212,8 @@ def rodar(cadastro: Path, *, sonda_binario=None) -> int:
                           default=socket.gethostname(),
                           esperado="um nome (o que está no hostname serve)")
         smtp = _perguntar_smtp()
+        quer_node = _perguntar("instalar Node 22 LTS?", validar=_validar_sim_nao,
+                               default="n", esperado="s ou n") == "s"
     except EOFError as erro:
         print(str(erro), file=sys.stderr)
         return 1
@@ -216,7 +222,7 @@ def rodar(cadastro: Path, *, sonda_binario=None) -> int:
         return 1
 
     plano = montar_plano(chave_escolha, nome, smtp, cadastro,
-                         sonda_binario=sonda_binario)
+                         sonda_binario=sonda_binario, quer_node=quer_node)
     print("\nVou fazer:\n" + "\n".join(f"  - {linha}" for linha in previa(plano)))
     try:
         confirma = _perguntar("confirma?", validar=_confirmar,
@@ -236,6 +242,21 @@ def rodar(cadastro: Path, *, sonda_binario=None) -> int:
     except ErroDeRede as erro:
         print(f"a configuração não terminou: {erro}", file=sys.stderr)
         return 1
+
+    if plano.get("node"):
+        from castor import runtime as mod_runtime
+        try:
+            irmao = mod_runtime.baixar_irmao("node")
+        except mod_runtime.ErroDeRuntime as erro:
+            print(f"a configuração não terminou: {erro}", file=sys.stderr)
+            return 1
+        import subprocess
+        feito = subprocess.run(["sh", str(irmao)], capture_output=True, text=True)
+        if feito.returncode != 0:
+            print(f"a configuração não terminou: o instalador do Node falhou: "
+                  f"{feito.stderr.strip()}", file=sys.stderr)
+            return 1
+        print(f"Node instalado em {feito.stdout.strip()}")
 
     try:
         if plano["chave_nova"]:

@@ -8,6 +8,85 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 INSTALADOR = RAIZ / "scripts" / "instalar.sh"
 IRMAO = RAIZ / "scripts" / "instalar-python.sh"
+IRMAO_NODE = RAIZ / "scripts" / "instalar-node.sh"
+
+
+def test_o_irmao_do_node_existe_e_cabe_em_oitenta_linhas():
+    assert IRMAO_NODE.exists()
+    assert len(IRMAO_NODE.read_text(encoding="utf-8").splitlines()) < 80
+
+
+def test_o_irmao_do_node_e_sh_e_para_no_primeiro_erro():
+    texto = IRMAO_NODE.read_text(encoding="utf-8")
+    assert texto.startswith("#!/bin/sh")
+    assert "set -eu" in texto
+
+
+def _tarball_node(tmp_path):
+    raiz = tmp_path / "arvore-node"
+    bindir = raiz / "node" / "bin"
+    bindir.mkdir(parents=True)
+    node = bindir / "node"
+    node.write_text(f"#!/bin/sh\nexec {sys.executable} -V\n", encoding="utf-8")
+    node.chmod(0o755)
+    (bindir / "npm").symlink_to(node)
+    tar = tmp_path / "node.tgz"
+    with tarfile.open(tar, "w:gz") as arquivo:
+        arquivo.add(raiz / "node", arcname="node")
+    soma = hashlib.sha256(tar.read_bytes()).hexdigest()
+    (tmp_path / "node.tgz.sha256").write_text(soma + "\n", encoding="utf-8")
+    return tar
+
+
+def test_o_irmao_do_node_extrai_tarball_em_xdg_data(tmp_path):
+    tar = _tarball_node(tmp_path)
+    data = tmp_path / "data"
+    concluido = subprocess.run(
+        ["sh", str(IRMAO_NODE)],
+        env={**os.environ, "XDG_DATA_HOME": str(data),
+             "CASTOR_NODE_ARTEFATO": str(tar)},
+        capture_output=True, text=True,
+    )
+    assert concluido.returncode == 0, concluido.stderr
+    destino = data / "castor" / "node"
+    assert destino.is_dir()
+    assert oct(destino.stat().st_mode)[-3:] == "700"
+    assert Path(concluido.stdout.strip()).exists()
+
+
+def test_o_irmao_do_node_recusa_soma_divergente(tmp_path):
+    tar = _tarball_node(tmp_path)
+    data = tmp_path / "data"
+    concluido = subprocess.run(
+        ["sh", str(IRMAO_NODE)],
+        env={**os.environ, "XDG_DATA_HOME": str(data),
+             "CASTOR_NODE_ARTEFATO": str(tar),
+             "CASTOR_NODE_SOMA_ESPERADA": "0" * 64},
+        capture_output=True, text=True,
+    )
+    assert concluido.returncode != 0
+    assert not (data / "castor" / "node").exists()
+
+
+def test_o_irmao_do_node_usa_versao_cavada_na_url():
+    """A descoberta por API é o que o irmão do Python ainda tem de dívida;
+    o do Node nasce com a URL de contrato."""
+    texto = IRMAO_NODE.read_text(encoding="utf-8")
+    assert "NODE_VERSION=" in texto
+    assert "nodejs.org/dist/v" in texto
+
+
+def test_o_irmao_do_node_imprime_o_node_do_tarball(tmp_path):
+    tar = _tarball_node(tmp_path)
+    data = tmp_path / "data"
+    concluido = subprocess.run(
+        ["sh", str(IRMAO_NODE)],
+        env={**os.environ, "XDG_DATA_HOME": str(data),
+             "CASTOR_NODE_ARTEFATO": str(tar)},
+        capture_output=True, text=True,
+    )
+    saida = concluido.stdout.strip()
+    assert saida.endswith("/bin/node")
 
 
 def construir(tmp_path):

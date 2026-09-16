@@ -205,6 +205,56 @@ def test_instalar_castor_exporta_castor_python_absoluto():
         for _, comando, _ in executor.chamadas)
 
 
+def test_sem_node_nao_ha_passo_nenhum_de_node():
+    roteiro = {p.nome: p for p in _roteiro(ConexaoDeMentira())}
+    assert "node_da_conta" not in roteiro
+
+
+def test_com_node_o_passo_existe_e_exige_o_sudo():
+    roteiro = {p.nome: p for p in preparar.montar_roteiro(
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
+        usuario_inicial="castor-inicial", usuario_de_servico="castor",
+        chave_publica="ssh-ed25519 AAAA... ana", contexto={},
+        executor=ConexaoDeMentira(), agora=lambda: 1789000000,
+        quer_node=True)}
+    assert "node_da_conta" in roteiro
+    assert "sudo" in roteiro["node_da_conta"].exige
+
+
+def test_node_ausente_na_conta_recebe_o_irmao_pela_entrada():
+    executor = ConexaoDeMentira({
+        "usuario=": RESPOSTA_MEDIDA,
+        "tailscale up": "visit: https://login.tailscale.com/a/9z8y\n",
+    })
+    contexto = {}
+    roteiro = {p.nome: p for p in preparar.montar_roteiro(
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
+        usuario_inicial="castor-inicial", usuario_de_servico="castor",
+        chave_publica="ssh-ed25519 AAAA... ana", contexto=contexto,
+        executor=executor, agora=lambda: 1789000000, quer_node=True)}
+    roteiro["node_da_conta"].fazer(contexto)
+    chamada_node = [c for c in executor.chamadas if c[2].get("entrada")]
+    assert chamada_node, "o irmão do Node não viajou pela entrada"
+    assert "NODE_VERSION" in chamada_node[0][2]["entrada"]
+    destino = [c[0] for c in executor.chamadas if c[2].get("entrada")]
+    assert destino == ["castor"]
+
+
+def test_node_presente_na_conta_nao_envia_o_irmao():
+    executor = ConexaoDeMentira({
+        "usuario=": RESPOSTA_MEDIDA,
+        "node -v": "v22.23.2\n",
+    })
+    contexto = {}
+    roteiro = {p.nome: p for p in preparar.montar_roteiro(
+        nome="computador-auxiliar", endereco="computador-auxiliar.exemplo.test",
+        usuario_inicial="castor-inicial", usuario_de_servico="castor",
+        chave_publica="ssh-ed25519 AAAA... ana", contexto=contexto,
+        executor=executor, agora=lambda: 1789000000, quer_node=True)}
+    roteiro["node_da_conta"].fazer(contexto)
+    assert not [c for c in executor.chamadas if c[2].get("entrada")]
+
+
 def test_python_311_na_conta_nao_instala_castor():
     executor = ConexaoDeMentira({
         "usuario=": RESPOSTA_MEDIDA.replace("3.14.0", "3.11.2"),

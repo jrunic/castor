@@ -101,7 +101,7 @@ def gravar_linha(conteudo: str, arquivo: str, *, acrescentar: bool = False,
 def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
                    usuario_de_servico: str, chave_publica: str,
                    contexto: dict, chave_inicial=None, executor=None,
-                   agora=time.time) -> list[Passo]:
+                   agora=time.time, quer_node: bool = False) -> list[Passo]:
     """Os passos, em ordem, do primeiro acesso à máquina pronta.
 
     O contexto carrega o que um passo mediu para o seguinte usar. O 'executor'
@@ -199,6 +199,13 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
                     f"continua de pé.")
         return None
 
+    def texto_do_irmao_do_node() -> str:
+        local = Path(__file__).resolve().parents[2] / "scripts" / "instalar-node.sh"
+        if local.is_file():
+            return local.read_text(encoding="utf-8")
+        raise ErroDePreparo(
+            "não achei o instalador de Node na principal para enviar à cliente.")
+
     def texto_do_irmao() -> str:
         local = Path(__file__).resolve().parents[2] / "scripts" / "instalar-python.sh"
         if local.is_file():
@@ -239,6 +246,17 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
         if medido is None:
             return "a conta de serviço não foi medida."
         return mod_medicao.conferir_python(medido)
+
+    def instalar_node_da_conta(_):
+        sonda = correr(servico, "bash -lc " + shlex.quote("node -v 2>&1 || true"))
+        if sonda.texto.strip().startswith("v22."):
+            return
+        correr(servico,
+               'mkdir -p "$HOME/.local/bin" && '
+               'cat > "$HOME/.local/bin/castor-instalar-node.sh" && '
+               'chmod 700 "$HOME/.local/bin/castor-instalar-node.sh" && '
+               'bash -lc "$HOME/.local/bin/castor-instalar-node.sh"',
+               entrada=texto_do_irmao_do_node())
 
     def conferir_sudo(_):
         if correr(servico, "sudo -n true").codigo != 0:
@@ -294,6 +312,8 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
         Passo("python_da_conta", fazer=instalar_python_da_conta,
               conferir=conferir_python_da_conta,
               exige=("provar_chave", "sudo")),
+        *((Passo("node_da_conta", fazer=instalar_node_da_conta,
+                 exige=("provar_chave", "sudo")),) if quer_node else ()),
         Passo("instalar_castor", fazer=instalar_castor,
               exige=("provar_chave", "python_da_conta"),
               conferir=conferir_castor),

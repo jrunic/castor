@@ -41,7 +41,7 @@ def test_configurar_abre_com_cabecalho(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\n\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
     monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
     assert principal(["configurar"]) == 0
     saida = capsys.readouterr().out
@@ -54,7 +54,7 @@ def test_configurar_grava_depois_da_rede_ok(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\n\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
     ordem = []
     monkeypatch.setattr("castor.configurar.garantir_rede",
                         lambda **_: ordem.append("rede"))
@@ -84,7 +84,7 @@ def test_previa_vem_antes_da_rede(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr("castor.configurar.previa", previa_marcada)
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\n\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
     assert principal(["configurar"]) == 0
     assert ordem == ["previa", "rede"]
 
@@ -96,7 +96,7 @@ def test_cancelar_na_previa_nao_faz_nada(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("castor.configurar.garantir_rede",
                         lambda **_: chamou.append("rede"))
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\nn\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\nn\n"))
     assert principal(["configurar"]) == 1
     assert chamou == []
     assert not (tmp_path / "cadastro.json").exists()
@@ -111,7 +111,7 @@ def test_previa_diz_que_instala_quando_a_sonda_nao_acha_binario(
     monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
     monkeypatch.setattr("castor.configurar._sonda_padrao", lambda: None)
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\n\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
     assert principal(["configurar"]) == 0
     assert "instalar o Tailscale" in capsys.readouterr().out
 
@@ -124,7 +124,7 @@ def test_previa_nao_diz_que_instala_quando_a_sonda_acha_binario(
     monkeypatch.setattr("castor.configurar._sonda_padrao",
                         lambda: "/x/tailscale")
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\n\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
     assert principal(["configurar"]) == 0
     assert "instalar o Tailscale" not in capsys.readouterr().out
 
@@ -134,7 +134,7 @@ def test_rede_falhando_depois_da_confirmacao_nada_cria(tmp_path, monkeypatch,
     monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr("castor.configurar.entrada",
-                        io.StringIO("c\ncomputador-principal\nn\n\n"))
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
 
     def garantir(**_):
         raise ErroDeRede("preciso de sudo uma vez.")
@@ -160,13 +160,52 @@ def test_configurar_com_entrada_fechada_sai_limpo(tmp_path, monkeypatch,
     assert not (tmp_path / "cadastro.json").exists()
 
 
+def test_configurar_sem_node_nao_baixa_nada(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("castor.configurar.entrada",
+                        io.StringIO("c\ncomputador-principal\nn\nn\n\n"))
+    monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
+    chamou = []
+    monkeypatch.setattr("castor.runtime.baixar_irmao",
+                        lambda *a, **k: chamou.append(a) or Path("/x"))
+    assert principal(["configurar"]) == 0
+    assert chamou == []
+    saida = capsys.readouterr().out
+    assert "Node" not in saida.split("Vou fazer")[1].split("confirma")[0] \
+        if "Vou fazer" in saida else True
+
+
+def test_configurar_com_node_baixa_e_executa_o_irmao(tmp_path, monkeypatch,
+                                                     capsys):
+    monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("castor.configurar.entrada",
+                        io.StringIO("c\ncomputador-principal\nn\ns\n\n"))
+    monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
+    stub = tmp_path / "irmao-stub.sh"
+    stub.write_text("#!/bin/sh\necho /x/castor/node/bin/node\n",
+                    encoding="utf-8")
+    stub.chmod(0o700)
+    import subprocess
+    monkeypatch.setattr(subprocess, "run",
+                        lambda *a, **k: type("R", (), {
+                            "returncode": 0,
+                            "stdout": "/x/castor/node/bin/node\n"})())
+    monkeypatch.setattr("castor.runtime.baixar_irmao",
+                        lambda *a, **k: stub)
+    assert principal(["configurar"]) == 0
+    saida = capsys.readouterr().out
+    assert "instalar Node 22 LTS" in saida.split("confirma?")[0]
+
+
 def test_configurar_google_grava_cofre_e_nao_imprime_senha(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
         "castor.configurar.entrada",
         io.StringIO(
-            "c\ncomputador-principal\ns\ng\nana@gmail.com\nsenha-secreta\n\n"),
+            "c\ncomputador-principal\ns\ng\nana@gmail.com\nsenha-secreta\nn\n\n"),
     )
     monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
     assert principal(["configurar"]) == 0
@@ -190,7 +229,7 @@ def test_configurar_outro_smtp_pergunta_servidor(tmp_path, monkeypatch):
         "castor.configurar.entrada",
         io.StringIO(
             "c\ncomputador-principal\ns\no\nsmtp.exemplo.test\n587\n"
-            "ana@exemplo.test\nsegredo\n\n\n\n"
+            "ana@exemplo.test\nsegredo\nn\n\n\n\n"
         ),
     )
     monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
@@ -206,7 +245,7 @@ def test_porta_nao_inteira_repergunta_sem_traceback(tmp_path, monkeypatch,
     monkeypatch.setattr(
         "castor.configurar.entrada",
         io.StringIO("c\ncomputador-principal\ns\no\nsmtp.exemplo.test\n"
-                    "abcd\n587\nana@exemplo.test\nsegredo\n\n\n\n"),
+                    "abcd\n587\nana@exemplo.test\nsegredo\nn\n\n\n\n"),
     )
     monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
     assert principal(["configurar"]) == 0
