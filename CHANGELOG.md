@@ -11,6 +11,16 @@ tags: [changelog]
 
 # Histórico de versões
 
+## Não lançado
+
+- **`preparar` acha os instaladores de Python e de Node quando roda do
+  pyz.** Antes ele os lia de `scripts/`, que só existe no checkout: da
+  instalação por release, `--node` parava no passo `node_da_conta` (código
+  7) e o Python faltante parava em `python_da_conta`. Agora baixa da
+  release, como o `configurar`, e confere a soma publicada na máquina
+  principal antes de enviar à cliente. A principal precisa de rede nesse
+  passo.
+
 ## 0.4.0 — 16/09/2026
 
 Medido nas máquinas do Walter (macOS 26.6.2, castor 0.3.0) e corrigido:

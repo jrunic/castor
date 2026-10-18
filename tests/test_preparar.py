@@ -85,6 +85,25 @@ RESPOSTA_MEDIDA = (
 )
 
 
+@pytest.fixture(autouse=True)
+def release_local(monkeypatch):
+    """O preparar baixa os irmãos da release; teste nenhum vai ao GitHub."""
+    import hashlib
+
+    from servidor import ServidorDeArquivos
+
+    mapa = {}
+    for nome in ("node", "python"):
+        corpo = Path(f"scripts/instalar-{nome}.sh").read_bytes()
+        mapa[f"/instalar-{nome}.sh"] = corpo
+        mapa[f"/instalar-{nome}.sh.sha256"] = (
+            hashlib.sha256(corpo).hexdigest().encode() + b"\n")
+    servidor = ServidorDeArquivos(mapa)
+    monkeypatch.setattr("castor.runtime.BASE_DA_RELEASE", servidor.base)
+    yield
+    servidor.fechar()
+
+
 class ConexaoDeMentira:
     """Responde como a máquina responderia, e guarda COMO foi chamada."""
 

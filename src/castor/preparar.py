@@ -17,6 +17,7 @@ from typing import Callable
 from castor import conexao as mod_conexao
 from castor import medicao as mod_medicao
 from castor import rede as mod_rede
+from castor import runtime as mod_runtime
 
 
 class ErroDePreparo(Exception):
@@ -101,7 +102,8 @@ def gravar_linha(conteudo: str, arquivo: str, *, acrescentar: bool = False,
 def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
                    usuario_de_servico: str, chave_publica: str,
                    contexto: dict, chave_inicial=None, executor=None,
-                   agora=time.time, quer_node: bool = False) -> list[Passo]:
+                   agora=time.time, quer_node: bool = False,
+                   base_da_release: str | None = None) -> list[Passo]:
     """Os passos, em ordem, do primeiro acesso à máquina pronta.
 
     O contexto carrega o que um passo mediu para o seguinte usar. O 'executor'
@@ -121,6 +123,7 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
        serviço está de pé e provado, sudo volta a rodar em lote — é por isso que
        o passo de rede EXIGE o de sudo, sem o qual não daria para capturar a URL.
     """
+    base = base_da_release or mod_runtime.BASE_DA_RELEASE
     por_senha = chave_inicial is None
     inicial = mod_conexao.Destino(usuario=usuario_inicial, endereco=endereco,
                                   chave=None if por_senha else Path(chave_inicial))
@@ -199,19 +202,24 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
                     f"continua de pé.")
         return None
 
+    def texto_do_irmao_de(nome: str) -> str:
+        """Baixa da release, com a soma conferida aqui, antes de enviar.
+
+        Não lê de `scripts/`: do pyz, o caminho relativo ao código cai fora do
+        repositório e o instalador some (#1251).
+        """
+        try:
+            return mod_runtime.baixar_irmao(nome, base).read_text(encoding="utf-8")
+        except mod_runtime.ErroDeRuntime as erro:
+            raise ErroDePreparo(
+                f"não obtive o instalador de {nome} para enviar à cliente: "
+                f"{erro}") from erro
+
     def texto_do_irmao_do_node() -> str:
-        local = Path(__file__).resolve().parents[2] / "scripts" / "instalar-node.sh"
-        if local.is_file():
-            return local.read_text(encoding="utf-8")
-        raise ErroDePreparo(
-            "não achei o instalador de Node na principal para enviar à cliente.")
+        return texto_do_irmao_de("node")
 
     def texto_do_irmao() -> str:
-        local = Path(__file__).resolve().parents[2] / "scripts" / "instalar-python.sh"
-        if local.is_file():
-            return local.read_text(encoding="utf-8")
-        raise ErroDePreparo(
-            "não achei o instalador de Python na principal para enviar à cliente.")
+        return texto_do_irmao_de("python")
 
     def instalar_python_da_conta(_):
         sonda = correr(servico, "bash -lc " + shlex.quote(mod_medicao.SONDA))
