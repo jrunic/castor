@@ -89,7 +89,7 @@ CAMINHOS_DO_BINARIO = ("/usr/local/bin/tailscale", "/opt/homebrew/bin/tailscale"
 def achar_binario(which=shutil.which, existe=Path.exists) -> str | None:
     """O PATH do ssh não-interativo não é o PATH de quem instalou o app.
 
-    Medido no macbook do Walter: invocado por symlink, o CLI do app crasha
+    Medido no macbook de um mentorado: invocado por symlink, o CLI do app crasha
     com "bundleIdentifier is unknown to the registry" — o caminho que volta
     é sempre resolvido ao alvo real.
     """

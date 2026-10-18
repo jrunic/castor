@@ -1047,7 +1047,7 @@ def _preparar_maquina(opcoes) -> int:
 
     # Grava ANTES da conferência de expiração: a cliente tecnicamente pronta
     # não pode sumir do cadastro porque o painel do Tailscale segue pendente
-    # (medido no macbook do Walter — código 6 abortava com cadastro vazio).
+    # (medido no macbook de um mentorado — código 6 abortava com cadastro vazio).
     maquina = mod_manifesto.Maquina(
         nome=opcoes.nome, usuario=opcoes.usuario_de_servico,
         casa=f"/home/{opcoes.usuario_de_servico}", sistema=medido.sistema,

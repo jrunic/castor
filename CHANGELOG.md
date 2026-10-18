@@ -11,7 +11,7 @@ tags: [changelog]
 
 # Histórico de versões
 
-## Não lançado
+## 0.4.1 — 18/10/2026
 
 - **`preparar` acha os instaladores de Python e de Node quando roda do
   pyz.** Antes ele os lia de `scripts/`, que só existe no checkout: da
@@ -23,7 +23,7 @@ tags: [changelog]
 
 ## 0.4.0 — 16/09/2026
 
-Medido nas máquinas do Walter (macOS 26.6.2, castor 0.3.0) e corrigido:
+Medido nas máquinas de um mentorado (macOS 26.6.2, castor 0.3.0) e corrigido:
 
 - **`curl | sh` acha o irmão.** No pipe, `$0` é `sh` e nada existe ao lado;
   o irmão agora é baixado da **mesma origem do pyz** (release, com

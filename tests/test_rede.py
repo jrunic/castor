@@ -113,7 +113,7 @@ def test_instalar_darwin_sem_sudo_recusa():
 
 
 def test_instalar_darwin_com_soma_divergente_nao_instala():
-    """Walter, macOS: a URL 'latest' deu 404; e pkg sem soma conferida não
+    """Mentorado, macOS: a URL 'latest' deu 404; e pkg sem soma conferida não
     ganha sudo installer."""
     chamadas = []
 
@@ -159,7 +159,7 @@ def test_binario_do_path_vence_os_caminhos_conhecidos():
 
 
 def test_o_binario_do_path_e_resolvido_quando_e_symlink(tmp_path):
-    """Walter, macOS: CLI via symlink crasha — 'bundleIdentifier is unknown
+    """Mentorado, macOS: CLI via symlink crasha — 'bundleIdentifier is unknown
     to the registry'. Só o caminho real do app é executável."""
     real = tmp_path / "Tailscale.app" / "Contents" / "MacOS" / "Tailscale"
     real.parent.mkdir(parents=True)

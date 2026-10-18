@@ -254,7 +254,7 @@ def test_preparar_mostra_a_url_de_login_capturada(tmp_path, capsys, monkeypatch)
 def test_expiracao_ativa_deixa_a_cliente_cadastrada_com_pendencia(tmp_path,
                                                                   capsys,
                                                                   monkeypatch):
-    """Walter, macOS: o código 6 da expiração abortava ANTES de gravar — a
+    """Mentorado, macOS: o código 6 da expiração abortava ANTES de gravar — a
     cliente técnica estava pronta e o cadastro, vazio."""
     caminho = _com_chave(tmp_path)
     _preparo_de_mentira(monkeypatch, expiracao="2026-12-16T13:48:07Z")

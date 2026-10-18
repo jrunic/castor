@@ -427,7 +427,7 @@ def test_acha_python_fora_do_path_por_caminho_conhecido(tmp_path):
 def test_o_pipe_acha_o_irmao_da_mesma_origem(tmp_path):
     """O caminho documentado no README: curl do instalador | sh.
 
-    Medido no macbook do Walter (castor 0.3.0): no pipe, $0 é 'sh' e o
+    Medido no macbook de um mentorado (castor 0.3.0): no pipe, $0 é 'sh' e o
     irmão ao lado não existe — o fallback de Python nunca rodava.
     """
     artefato = construir(tmp_path)
