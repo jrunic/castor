@@ -252,3 +252,56 @@ def test_porta_nao_inteira_repergunta_sem_traceback(tmp_path, monkeypatch,
     saida = capsys.readouterr()
     assert "Traceback" not in saida.out + saida.err
     assert "esperava" in saida.out
+
+
+def _ambiente_do_configurar_com_node(tmp_path, monkeypatch, servidor):
+    import castor
+    monkeypatch.setenv("CASTOR_CADASTRO", str(tmp_path / "cadastro.json"))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("castor.configurar.entrada",
+                        io.StringIO("c\ncomputador-principal\nn\ns\n\n"))
+    monkeypatch.setattr("castor.configurar.garantir_rede", lambda **_: None)
+    monkeypatch.setattr("castor.runtime.ORIGEM_DAS_RELEASES", servidor.base)
+    monkeypatch.setattr(castor, "__version__", "9.9.9")
+
+
+def test_configurar_com_node_pede_o_irmao_da_release_da_versao(
+        tmp_path, monkeypatch, capsys):
+    import hashlib
+    import subprocess
+
+    from servidor import ServidorDeArquivos
+
+    script = b"#!/bin/sh\necho /x/castor/node/bin/node\n"
+    servidor = ServidorDeArquivos({
+        "/v9.9.9/instalar-node.sh": script,
+        "/v9.9.9/instalar-node.sh.sha256":
+            hashlib.sha256(script).hexdigest().encode() + b"\n",
+    })
+    try:
+        _ambiente_do_configurar_com_node(tmp_path, monkeypatch, servidor)
+        monkeypatch.setattr(subprocess, "run",
+                            lambda *a, **k: type("R", (), {
+                                "returncode": 0,
+                                "stdout": "/x/castor/node/bin/node\n"})())
+        assert principal(["configurar"]) == 0
+    finally:
+        servidor.fechar()
+    assert servidor.pedidos == ["/v9.9.9/instalar-node.sh",
+                                "/v9.9.9/instalar-node.sh.sha256"]
+    assert "Node instalado em /x/castor/node/bin/node" in capsys.readouterr().out
+
+
+def test_configurar_com_node_e_release_ausente_nomeia_a_tag(
+        tmp_path, monkeypatch, capsys):
+    from servidor import ServidorDeArquivos
+
+    servidor = ServidorDeArquivos({})
+    try:
+        _ambiente_do_configurar_com_node(tmp_path, monkeypatch, servidor)
+        assert principal(["configurar"]) == 1
+    finally:
+        servidor.fechar()
+    assert "v9.9.9" in capsys.readouterr().err
+    assert servidor.pedidos
+    assert all(p.startswith("/v9.9.9/") for p in servidor.pedidos)
