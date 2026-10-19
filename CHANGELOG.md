@@ -25,6 +25,20 @@ tags: [changelog]
   `castor rotina agendar <nome> --maquina <nome>` de novo:** esta versão não
   reescreve linha existente.
 
+## Não lançado
+
+- **Os instaladores irmãos vêm da release da versão em execução.** `preparar`
+  e `configurar` baixavam da release mais recente, e um castor mais antigo
+  podia enviar à cliente, com sudo, um instalador que a versão dele nunca
+  viu — com a soma conferindo, porque a soma publicada era a do instalador
+  novo. Agora a origem é a release de tag `v<versão>`. Se essa release não
+  existe, o comando para e diz qual endereço procurou; não cai para a mais
+  recente.
+- **Para quem publica release:** toda release anexa os dois irmãos com as
+  somas, e o pyz anexado responde em `--versao` a versão da tag. Conferir
+  antes de criar a release: o diretório de saída de build pode guardar o pyz
+  de uma versão anterior.
+
 ## 0.4.1 — 18/10/2026
 
 - **`preparar` acha os instaladores de Python e de Node quando roda do

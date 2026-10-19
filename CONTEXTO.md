@@ -159,7 +159,8 @@ docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 põe 3.14 no XDG data. Última release publicada: **0.4.1**. Toda mudança de
 comportamento entra no `CHANGELOG.md` no mesmo commit.
 
-`preparar` e `configurar` baixam os irmãos da release (`runtime.baixar_irmao`);
+`preparar` e `configurar` baixam os irmãos da release da versão em execução
+(tag `v<versão>`, `runtime.baixar_irmao`), sem queda para a mais recente;
 nada lê de `scripts/` em runtime, porque do pyz ele não existe. Teste de
 empacotamento roda de dentro do pyz construído, não do checkout.
 
