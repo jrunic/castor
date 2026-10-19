@@ -53,8 +53,11 @@ Para quem: quem opera a própria máquina — e o agente de IA que opera junto.
 - **Distribuição:** aplicação Python de arquivo único, publicada como release
   no GitHub. **Não** publica em registro de pacote.
 - **Instalação:** script de bootstrap em shell (`instalar.sh`, teto 130
-  linhas) e irmão `instalar-python.sh` (teto 80) quando não há Python ≥3.12.
-  O teto existe para o shell não virar programa.
+  linhas) e irmãos `instalar-python.sh` e `instalar-node.sh` (teto 80
+  cada) para os runtimes faltantes. Os irmãos são **anexos da release**
+  com `.sha256` publicado junto — o `curl | sh` deriva a origem deles da
+  base do pyz, nunca de `main` cru. O teto existe para o shell não virar
+  programa.
 
 ## Padrões técnicos
 
@@ -153,12 +156,12 @@ docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 **As sete áreas de pé**, mais `castor configurar` na raiz. Superfície: cadastro
 (`--cadastro`, `CASTOR_CADASTRO`), `--ensaio`. Sem Python ≥3.12 o instalador
-põe 3.14 no XDG data. Última release publicada: **0.2.0**. Toda mudança de
+põe 3.14 no XDG data. Última release publicada: **0.4.1**. Toda mudança de
 comportamento entra no `CHANGELOG.md` no mesmo commit.
 
-Antes de aceitar o ciclo `instalacao-real`: a release precisa anexar os
-irmãos (`instalar-python.sh`, `instalar-node.sh` + `.sha256` de ambos) ao
-lado do pyz — o `curl | sh` deriva o irmão da origem do pyz.
+`preparar` e `configurar` baixam os irmãos da release (`runtime.baixar_irmao`);
+nada lê de `scripts/` em runtime, porque do pyz ele não existe. Teste de
+empacotamento roda de dentro do pyz construído, não do checkout.
 
 ## Referências
 
