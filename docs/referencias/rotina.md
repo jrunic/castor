@@ -133,6 +133,28 @@ A partir daí ela roda sozinha. Para ver o que aconteceu:
 cat ~/.local/state/castor/registros/limpeza.log
 ```
 
+## O que o `agendar` grava e confere
+
+A linha do `crontab` chama **o próprio castor por caminho absoluto**, porque o
+`cron` roda com PATH curto (`/usr/bin:/bin`), sem `~/.local/bin`, e o nome nu
+`castor` não se resolve ali. O caminho vem de quem está rodando agora, nesta
+ordem:
+
+1. o wrapper ao lado do pyz em execução (`~/.local/bin/castor`, o que o
+   instalador grava);
+2. o interpretador mais o pyz, quando não há wrapper;
+3. o `castor` do PATH, só quando se roda do checkout, onde não há pyz.
+
+Antes de gravar, o `agendar` roda `<castor> --versao` **com o ambiente do
+cron** (`env -i`, PATH `/usr/bin:/bin`). Se o comando não responde, ele recusa
+com código 1, diz o motivo e **não grava nada**. Sem essa prova o defeito é
+silencioso: o `cron` descarta a saída e a rotina nunca roda.
+
+Quem agendou com a versão 0.4.1 ou anterior tem uma linha com `castor` nu, que
+o cron não acha. Rode `castor rotina agendar <nome> --maquina <nome>` de novo:
+a linha é substituída. Para ver o comando gravado, use `crontab -l` (o
+`rotina listar` mostra o nome e o horário).
+
 ## O que o `agendar` não faz
 
 Ele **nunca reescreve linha que não seja do castor**. Cada linha que ele põe
@@ -147,7 +169,7 @@ desagendar nesta versão — apague a linha marcada com `crontab -e`.
 | Código | Significa |
 |---|---|
 | 0 | o comando saiu 0, **ou** não rodou porque já havia uma execução em curso |
-| 1 | rotina não declarada no cadastro, ou erro de cadastro |
+| 1 | rotina não declarada no cadastro, erro de cadastro, ou `agendar` recusado porque o cron não alcança o castor |
 | **124** | o teto de tempo estourou |
 | qualquer outro | é o código do próprio comando, repassado |
 

@@ -237,10 +237,18 @@ def _despachar_rotina(opcoes) -> int:
         return 1
 
     if opcoes.verbo == "agendar":
+        try:
+            comando = mod_agenda.comando_de_rotina(
+                opcoes.nome, opcoes.maquina, argv0=sys.argv[0],
+                executavel=sys.executable, casa=str(Path.home()),
+            )
+        except mod_agenda.AgendaRecusada as recusa:
+            print(f"[castor] {recusa}", file=sys.stderr)
+            return 1
         tabela = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
         nova = mod_agenda.agendar_em(
             tabela, nome=opcoes.nome, quando=declarado[opcoes.nome]["quando"],
-            comando=f"castor rotina rodar {opcoes.nome} --maquina {opcoes.maquina}",
+            comando=comando,
         )
         subprocess.run(["crontab", "-"], input=nova, text=True, check=True)
         print(f"agendada: {opcoes.nome}")

@@ -11,6 +11,20 @@ tags: [changelog]
 
 # Histórico de versões
 
+## Não lançado
+
+- **`rotina agendar` grava o castor por caminho absoluto e confere que o cron
+  o alcança.** Antes gravava `castor rotina rodar ...` com o nome nu. O cron
+  roda com PATH curto (`/usr/bin:/bin`), sem `~/.local/bin`: respondia
+  `castor: not found`, descartava a saída e a rotina nunca rodava, sem sinal
+  nenhum (medido num mentorado: cron disparando todo dia, log parado havia 17
+  dias). Agora a linha chama o wrapper ao lado do pyz em execução, ou o
+  interpretador mais o pyz, e antes de gravar o `agendar` roda
+  `<castor> --versao` com o ambiente do cron; se falhar, recusa com código 1 e
+  não grava. **Quem já agendou com a 0.4.1 ou anterior precisa rodar
+  `castor rotina agendar <nome> --maquina <nome>` de novo:** esta versão não
+  reescreve linha existente.
+
 ## 0.4.1 — 18/10/2026
 
 - **`preparar` acha os instaladores de Python e de Node quando roda do
