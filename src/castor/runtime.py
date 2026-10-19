@@ -1,29 +1,42 @@
 """Baixar e conferir os irmãos de runtime antes de executar.
 
-A origem é sempre a release do castor: o irmão mora na mesma pasta do
-castor.pyz, com a soma publicada ao lado. Soma ausente ou divergente é
-recusa — o script baixado ganha sudo e mexe no XDG do usuário.
+A origem é a release da versão em execução: o irmão mora junto do
+castor.pyz dessa tag, com a soma publicada ao lado. Soma ausente ou
+divergente é recusa — o script baixado ganha sudo e mexe no XDG do usuário.
 """
 import hashlib
 import subprocess
 import tempfile
 from pathlib import Path
 
-BASE_DA_RELEASE = "https://github.com/jrunic/castor/releases/latest/download"
+import castor
+
+ORIGEM_DAS_RELEASES = "https://github.com/jrunic/castor/releases/download"
 
 
 class ErroDeRuntime(Exception):
     pass
 
 
+def base_da_versao() -> str:
+    """A release cuja tag é a versão em execução — nunca a mais recente.
+
+    Irmão de outra versão chega com a soma certa e o conteúdo errado: a soma
+    publicada é a dele.
+    """
+    return f"{ORIGEM_DAS_RELEASES}/v{castor.__version__}"
+
+
 def _soma_de(bytes_: bytes) -> str:
     return hashlib.sha256(bytes_).hexdigest()
 
 
-def baixar_irmao(nome: str, base: str = BASE_DA_RELEASE,
+def baixar_irmao(nome: str, base: str | None = None,
                  executor=subprocess.run) -> Path:
     """instalar-<nome>.sh + .sha256 da base; confere; devolve o caminho."""
     import urllib.request
+
+    base = base or base_da_versao()
 
     def baixar(caminho: str) -> bytes:
         concluido = executor(

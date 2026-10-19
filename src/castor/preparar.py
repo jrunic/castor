@@ -123,7 +123,7 @@ def montar_roteiro(*, nome: str, endereco: str, usuario_inicial: str,
        serviço está de pé e provado, sudo volta a rodar em lote — é por isso que
        o passo de rede EXIGE o de sudo, sem o qual não daria para capturar a URL.
     """
-    base = base_da_release or mod_runtime.BASE_DA_RELEASE
+    base = base_da_release or mod_runtime.base_da_versao()
     por_senha = chave_inicial is None
     inicial = mod_conexao.Destino(usuario=usuario_inicial, endereco=endereco,
                                   chave=None if por_senha else Path(chave_inicial))

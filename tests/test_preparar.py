@@ -87,20 +87,21 @@ RESPOSTA_MEDIDA = (
 
 @pytest.fixture(autouse=True)
 def release_local(monkeypatch):
-    """O preparar baixa os irmãos da release; teste nenhum vai ao GitHub."""
+    """O preparar baixa os irmãos da release da versão; teste nenhum vai ao GitHub."""
     import hashlib
 
+    import castor
     from servidor import ServidorDeArquivos
 
     mapa = {}
     for nome in ("node", "python"):
         corpo = Path(f"scripts/instalar-{nome}.sh").read_bytes()
-        mapa[f"/instalar-{nome}.sh"] = corpo
-        mapa[f"/instalar-{nome}.sh.sha256"] = (
+        mapa[f"/v{castor.__version__}/instalar-{nome}.sh"] = corpo
+        mapa[f"/v{castor.__version__}/instalar-{nome}.sh.sha256"] = (
             hashlib.sha256(corpo).hexdigest().encode() + b"\n")
     servidor = ServidorDeArquivos(mapa)
-    monkeypatch.setattr("castor.runtime.BASE_DA_RELEASE", servidor.base)
-    yield
+    monkeypatch.setattr("castor.runtime.ORIGEM_DAS_RELEASES", servidor.base)
+    yield servidor
     servidor.fechar()
 
 
@@ -240,7 +241,7 @@ def test_com_node_o_passo_existe_e_exige_o_sudo():
     assert "sudo" in roteiro["node_da_conta"].exige
 
 
-def test_node_ausente_na_conta_recebe_o_irmao_pela_entrada():
+def test_node_ausente_na_conta_recebe_o_irmao_pela_entrada(release_local):
     executor = ConexaoDeMentira({
         "usuario=": RESPOSTA_MEDIDA,
         "tailscale up": "visit: https://login.tailscale.com/a/9z8y\n",
@@ -257,6 +258,10 @@ def test_node_ausente_na_conta_recebe_o_irmao_pela_entrada():
     assert "NODE_VERSION" in chamada_node[0][2]["entrada"]
     destino = [c[0] for c in executor.chamadas if c[2].get("entrada")]
     assert destino == ["castor"]
+    import castor
+    assert release_local.pedidos == [
+        f"/v{castor.__version__}/instalar-node.sh",
+        f"/v{castor.__version__}/instalar-node.sh.sha256"]
 
 
 def test_node_presente_na_conta_nao_envia_o_irmao():
@@ -274,7 +279,7 @@ def test_node_presente_na_conta_nao_envia_o_irmao():
     assert not [c for c in executor.chamadas if c[2].get("entrada")]
 
 
-def test_python_311_na_conta_nao_instala_castor():
+def test_python_311_na_conta_nao_instala_castor(release_local):
     executor = ConexaoDeMentira({
         "usuario=": RESPOSTA_MEDIDA.replace("3.14.0", "3.11.2"),
     })
@@ -284,6 +289,10 @@ def test_python_311_na_conta_nao_instala_castor():
                           relatar=lambda t: None)
     assert "python_da_conta" in str(erro.value)
     assert not any("curl" in c[1] for c in executor.chamadas)
+    import castor
+    assert release_local.pedidos == [
+        f"/v{castor.__version__}/instalar-python.sh",
+        f"/v{castor.__version__}/instalar-python.sh.sha256"]
 
 
 def test_o_roteiro_inteiro_roda_e_nao_chega_a_fechar_o_acesso_inicial():
@@ -439,3 +448,28 @@ def test_a_chave_nao_e_acrescentada_duas_vezes(tmp_path):
     for _ in range(3):
         subprocess.run(["sh", "-c", f'sh -c "{fragmento}"'], check=True)
     assert alvo.read_text(encoding="utf-8").count("ssh-ed25519 NOVA castor") == 1
+
+
+def test_release_da_versao_ausente_para_o_preparar_sem_enviar_nada(monkeypatch):
+    import castor
+    from servidor import ServidorDeArquivos
+
+    vazio = ServidorDeArquivos({})
+    executor = ConexaoDeMentira()
+    contexto = {}
+    try:
+        monkeypatch.setattr("castor.runtime.ORIGEM_DAS_RELEASES", vazio.base)
+        monkeypatch.setattr(castor, "__version__", "9.9.9")
+        roteiro = {p.nome: p for p in preparar.montar_roteiro(
+            nome="computador-auxiliar",
+            endereco="computador-auxiliar.exemplo.test",
+            usuario_inicial="castor-inicial", usuario_de_servico="castor",
+            chave_publica="ssh-ed25519 AAAA... ana", contexto=contexto,
+            executor=executor, agora=lambda: 1789000000, quer_node=True)}
+        with pytest.raises(preparar.ErroDePreparo) as erro:
+            roteiro["node_da_conta"].fazer(contexto)
+    finally:
+        vazio.fechar()
+    assert "v9.9.9" in str(erro.value)
+    assert vazio.pedidos
+    assert not [c for c in executor.chamadas if c[2].get("entrada")]
