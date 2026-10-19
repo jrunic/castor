@@ -156,7 +156,7 @@ docs/{tutoriais,guias,referencias,explicacoes}/ — Diátaxis
 
 **As sete áreas de pé**, mais `castor configurar` na raiz. Superfície: cadastro
 (`--cadastro`, `CASTOR_CADASTRO`), `--ensaio`. Sem Python ≥3.12 o instalador
-põe 3.14 no XDG data. Última release publicada: **0.4.1**. Toda mudança de
+põe 3.14 no XDG data. Última release publicada: **0.4.2**. Toda mudança de
 comportamento entra no `CHANGELOG.md` no mesmo commit.
 
 `preparar` e `configurar` baixam os irmãos da release da versão em execução

@@ -11,7 +11,7 @@ tags: [changelog]
 
 # Histórico de versões
 
-## Não lançado
+## 0.4.2 — 19/10/2026
 
 - **`rotina agendar` grava o castor por caminho absoluto e confere que o cron
   o alcança.** Antes gravava `castor rotina rodar ...` com o nome nu. O cron
@@ -24,9 +24,6 @@ tags: [changelog]
   não grava. **Quem já agendou com a 0.4.1 ou anterior precisa rodar
   `castor rotina agendar <nome> --maquina <nome>` de novo:** esta versão não
   reescreve linha existente.
-
-## Não lançado
-
 - **Os instaladores irmãos vêm da release da versão em execução.** `preparar`
   e `configurar` baixavam da release mais recente, e um castor mais antigo
   podia enviar à cliente, com sudo, um instalador que a versão dele nunca
