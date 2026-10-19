@@ -4,8 +4,12 @@ import threading
 
 class ServidorDeArquivos:
     def __init__(self, mapa, codigo_padrao=404):
+        self.pedidos = []
+        pedidos = self.pedidos
+
         class Atendente(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
+                pedidos.append(self.path)
                 corpo = mapa.get(self.path)
                 if corpo is None:
                     self.send_response(codigo_padrao)
